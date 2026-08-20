@@ -1,155 +1,190 @@
-/* =========================================================
-   VIEW: vw_VesselSummary
-   Resumen por nave
-   ========================================================= */
-CREATE VIEW vw_VesselSummary AS
+/*
+========================================================
+PROYECTO: CONTROL IQBF - BIG BAGS
+ARCHIVO: 04_views.sql
+OBJETIVO: VISTAS PARA DASHBOARD Y REPORTES
+========================================================
+*/
+
+-- =====================================================
+-- RESUMEN GENERAL POR BL
+-- =====================================================
+
+CREATE VIEW vw_BLSummary
+AS
 SELECT
-    v.Id,
-    v.Name,
-    v.IsActive,
-    ISNULL(SUM(r.Quantity), 0) AS TotalReceived,
-    ISNULL(SUM(d.Quantity), 0) AS TotalDispatched,
-    ISNULL(SUM(r.Quantity), 0) - ISNULL(SUM(d.Quantity), 0) AS CurrentStock
-FROM Vessels v
-LEFT JOIN Receptions r
-    ON v.Id = r.VesselId
-LEFT JOIN Dispatches d
-    ON v.Id = d.VesselId
-GROUP BY
-    v.Id,
-    v.Name,
-    v.IsActive;
-GO
+    b.BLId,
+    b.Code AS BL,
+    p.Name AS Product,
+    s.Name AS Ship,
 
+    ISNULL(r.TotalReceived, 0) AS TotalReceived,
+    ISNULL(d.TotalDispatched, 0) AS TotalDispatched,
 
-/* =========================================================
-   VIEW: vw_BLBalance
-   Balance por BL
-   ========================================================= */
-CREATE VIEW vw_BLBalance AS
-SELECT
-    b.Id,
-    b.BlCode,
-    pc.Name AS ProductName,
-    b.LotTotal,
-
-    ISNULL(SUM(ri.Quantity), 0) AS ReceivedQty,
-
-    b.LotTotal - ISNULL(SUM(ri.Quantity), 0)
-        AS RemainingQty
+    ISNULL(r.TotalReceived, 0) -
+    ISNULL(d.TotalDispatched, 0) AS Balance
 
 FROM BLs b
 
-LEFT JOIN ProductCatalog pc
-    ON pc.Id = b.ProductCatalogId
+INNER JOIN Products p
+    ON b.ProductId = p.ProductId
 
-LEFT JOIN ReceptionItems ri
-    ON ri.BlId = b.Id
-
-GROUP BY
-    b.Id,
-    b.BlCode,
-    pc.Name,
-    b.LotTotal;
-GO
-
-
-/* =========================================================
-   VIEW: vw_DailyReception
-   Recepción diaria
-   ========================================================= */
-CREATE VIEW vw_DailyReception AS
-SELECT
-    CAST(CreatedAt AS DATE) AS OperationDate,
-    COUNT(*) AS Trucks,
-    SUM(Quantity) AS TotalQuantity
-FROM Receptions
-GROUP BY CAST(CreatedAt AS DATE);
-GO
-
-
-/* =========================================================
-   VIEW: vw_DailyDispatch
-   Despacho diario
-   ========================================================= */
-CREATE VIEW vw_DailyDispatch AS
-SELECT
-    CAST(CreatedAt AS DATE) AS OperationDate,
-    COUNT(*) AS Trucks,
-    SUM(Quantity) AS TotalQuantity
-FROM Dispatches
-GROUP BY CAST(CreatedAt AS DATE);
-GO
-
-
-/* =========================================================
-   VIEW: vw_CurrentStock
-   Stock operacional
-   ========================================================= */
-CREATE VIEW vw_CurrentStock AS
-SELECT
-    v.Id AS VesselId,
-    v.Name AS VesselName,
-
-    ISNULL(r.TotalReceived,0) AS TotalReceived,
-    ISNULL(d.TotalDispatched,0) AS TotalDispatched,
-
-    ISNULL(r.TotalReceived,0) -
-    ISNULL(d.TotalDispatched,0) AS CurrentStock
-
-FROM Vessels v
+INNER JOIN Ships s
+    ON b.ShipId = s.ShipId
 
 LEFT JOIN
 (
     SELECT
-        VesselId,
+        BLId,
         SUM(Quantity) AS TotalReceived
-    FROM Receptions
-    GROUP BY VesselId
+    FROM ReceptionItems
+    GROUP BY BLId
 ) r
-ON v.Id = r.VesselId
+ON b.BLId = r.BLId
 
 LEFT JOIN
 (
     SELECT
-        VesselId,
+        BLId,
         SUM(Quantity) AS TotalDispatched
-    FROM Dispatches
-    GROUP BY VesselId
+    FROM DispatchItems
+    GROUP BY BLId
 ) d
-ON v.Id = d.VesselId;
+ON b.BLId = d.BLId;
 GO
 
+-- =====================================================
+-- RESUMEN POR NAVE
+-- =====================================================
 
-/* =========================================================
-   VIEW: vw_ReceptionDetails
-   Detalle completo de recepciones
-   ========================================================= */
-CREATE VIEW vw_ReceptionDetails AS
+CREATE VIEW vw_ShipSummary
+AS
 SELECT
-    r.Id,
-    r.TerminalTruck,
-    r.Quantity,
-    r.OperatorName,
-    r.CreatedAt,
+    s.ShipId,
+    s.Name AS Ship,
 
-    v.Name AS Vessel,
+    COUNT(DISTINCT b.BLId) AS TotalBLs,
 
-    b.BlCode,
+    SUM(ISNULL(r.TotalReceived,0)) AS TotalReceived,
 
-    pc.Name AS Product
+    SUM(ISNULL(d.TotalDispatched,0)) AS TotalDispatched,
 
-FROM Receptions r
+    SUM(ISNULL(r.TotalReceived,0)) -
+    SUM(ISNULL(d.TotalDispatched,0)) AS Balance
 
-LEFT JOIN Vessels v
-    ON v.Id = r.VesselId
-
-LEFT JOIN ReceptionItems ri
-    ON ri.ReceptionId = r.Id
+FROM Ships s
 
 LEFT JOIN BLs b
-    ON b.Id = ri.BlId
+    ON s.ShipId = b.ShipId
 
-LEFT JOIN ProductCatalog pc
-    ON pc.Id = b.ProductCatalogId;
+LEFT JOIN
+(
+    SELECT
+        BLId,
+        SUM(Quantity) AS TotalReceived
+    FROM ReceptionItems
+    GROUP BY BLId
+) r
+ON b.BLId = r.BLId
+
+LEFT JOIN
+(
+    SELECT
+        BLId,
+        SUM(Quantity) AS TotalDispatched
+    FROM DispatchItems
+    GROUP BY BLId
+) d
+ON b.BLId = d.BLId
+
+GROUP BY
+    s.ShipId,
+    s.Name;
+GO
+
+-- =====================================================
+-- RESUMEN POR TURNO
+-- =====================================================
+
+CREATE VIEW vw_ShiftSummary
+AS
+SELECT
+
+    sh.ShiftId,
+    sh.ShiftDate,
+    sh.ShiftType,
+    sh.Status,
+
+    sp.Name AS Ship,
+
+    COUNT(DISTINCT r.ReceptionId) AS TotalReceptions,
+    COUNT(DISTINCT dp.DispatchId) AS TotalDispatches
+
+FROM Shifts sh
+
+INNER JOIN Ships sp
+    ON sh.ShipId = sp.ShipId
+
+LEFT JOIN Receptions r
+    ON sh.ShiftId = r.ShiftId
+
+LEFT JOIN Dispatches dp
+    ON sh.ShiftId = dp.ShiftId
+
+GROUP BY
+    sh.ShiftId,
+    sh.ShiftDate,
+    sh.ShiftType,
+    sh.Status,
+    sp.Name;
+GO
+
+-- =====================================================
+-- DASHBOARD RECEPCION VS DESPACHO
+-- =====================================================
+
+CREATE VIEW vw_Dashboard
+AS
+SELECT
+
+    b.Code AS BL,
+
+    p.Name AS Product,
+
+    s.Name AS Ship,
+
+    ISNULL(r.TotalReceived,0) AS Reception,
+
+    ISNULL(d.TotalDispatched,0) AS Dispatch,
+
+    ISNULL(r.TotalReceived,0) -
+    ISNULL(d.TotalDispatched,0) AS Balance
+
+FROM BLs b
+
+INNER JOIN Products p
+    ON b.ProductId = p.ProductId
+
+INNER JOIN Ships s
+    ON b.ShipId = s.ShipId
+
+LEFT JOIN
+(
+    SELECT
+        BLId,
+        SUM(Quantity) AS TotalReceived
+    FROM ReceptionItems
+    GROUP BY BLId
+) r
+ON b.BLId = r.BLId
+
+LEFT JOIN
+(
+    SELECT
+        BLId,
+        SUM(Quantity) AS TotalDispatched
+    FROM DispatchItems
+    GROUP BY BLId
+) d
+ON b.BLId = d.BLId;
 GO
