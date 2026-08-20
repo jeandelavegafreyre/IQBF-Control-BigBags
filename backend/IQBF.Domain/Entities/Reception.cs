@@ -4,39 +4,22 @@ namespace IQBF.Domain.Entities;
 
 public class Reception : BaseEntity
 {
-    /// <summary>
-    /// Número de Terminal Truck.
-    /// Solo valores numéricos según la regla de negocio.
-    /// </summary>
-    public string TruckNumber { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Comentario opcional.
-    /// Máximo 100 caracteres.
-    /// </summary>
-    public string? Comments { get; set; }
-
-    // =====================================================
-    // RELACIONES
-    // =====================================================
-
-    /// <summary>
-    /// Turno al que pertenece la recepción.
-    /// </summary>
     public Guid ShiftId { get; set; }
 
-    public Shift? Shift { get; set; }
+    public Guid VesselId { get; set; }
 
-    /// <summary>
-    /// Usuario que registró la recepción.
-    /// </summary>
-    public Guid CreatedByUserId { get; set; }
+    public string TerminalTruck { get; set; } = string.Empty;
 
-    public User? CreatedByUser { get; set; }
+    public decimal Quantity { get; set; }
 
-    /// <summary>
-    /// Detalle de BLs asociados a la recepción.
-    /// Permite múltiples BL por transacción.
-    /// </summary>
-    public ICollection<ReceptionItem> ReceptionItems { get; set; }
-     
+    public string? Comment { get; set; }
+
+    public string OperatorName { get; set; } = string.Empty;
+
+    // Navigation Properties
+    public ICollection<ReceptionItem> Items { get; set; }
+        = new List<ReceptionItem>();
+
+    public ICollection<ReceptionPhoto> Photos { get; set; }
+        = new List<ReceptionPhoto>();
+}
