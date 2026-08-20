@@ -4,20 +4,16 @@ namespace IQBF.Domain.Entities;
 
 public class DispatchPhoto : BaseEntity
 {
-    /// <summary>
-    /// URL de la evidencia fotográfica almacenada.
-    /// Puede apuntar a Azure Blob Storage o al repositorio corporativo definido.
-    /// </summary>
-    public string PhotoUrl { get; set; } = string.Empty;
-
-    // =====================================================
-    // RELACIONES
-    // =====================================================
-
-    /// <summary>
-    /// Despacho al que pertenece la fotografía.
-    /// </summary>
     public Guid DispatchId { get; set; }
 
-    public Dispatch? Dispatch { get; set; }
+    public string PhotoUrl { get; set; } = string.Empty;
+
+    public string? FileName { get; set; }
+
+    public string? ContentType { get; set; }
+
+    public long? FileSize { get; set; }
+
+    // Navigation Property
+    public Dispatch Dispatch { get; set; } = null!;
 }
