@@ -67,10 +67,10 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         // RECEPTION ITEMS
-        modelBuilder.Entity<ReceptionItem>()
+       modelBuilder.Entity<ReceptionItem>()
             .HasOne(x => x.Reception)
-            .WithMany(x => x.ReceptionItems)
-            .HasForeignKey(x => x.ReceptionId);
+            .WithMany(x => x.Items)
+            .HasForeignKey(x => x.ReceptionId)
 
         modelBuilder.Entity<ReceptionItem>()
             .HasOne(x => x.BL)
@@ -84,9 +84,9 @@ public class AppDbContext : DbContext
             .HasForeignKey(x => x.ReceptionId);
 
         // DISPATCH ITEMS
-        modelBuilder.Entity<DispatchItem>()
+        modelBbuilder.Entity<DispatchItem>()
             .HasOne(x => x.Dispatch)
-            .WithMany(x => x.DispatchItems)
+            .WithMany(x => x.Items)
             .HasForeignKey(x => x.DispatchId);
 
         modelBuilder.Entity<DispatchItem>()
