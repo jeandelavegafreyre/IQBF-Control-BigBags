@@ -1,19 +1,11 @@
 namespace IQBF.Domain.Enums;
-2
- 
-3
+
 /// <summary>
-4
-/// Roles disponibles dentro del sistema.
-5
+/// Roles disponibles dentro de Control IQBF.
 /// </summary>
-6
 public enum UserRole
-7
 {
-8
-Administrator = 1,
-9
-Operator = 2
-10
+    Administrator = 1,
+    Yard = 2,
+    User = 3
 }

@@ -3,46 +3,33 @@ using IQBF.Domain.Enums;
 
 namespace IQBF.Domain.Entities;
 
+/// <summary>
+/// Turno operativo de una nave para una fecha y tipo de turno.
+/// Las recepciones y despachos se vinculan a este turno.
+/// </summary>
 public class Shift : BaseEntity
 {
-    /// <summary>
-    /// Fecha operativa del turno.
-    /// </summary>
     public DateOnly ShiftDate { get; set; }
 
-    /// <summary>
-    /// Tipo de turno.
-    /// Day = 06:00 - 18:00
-    /// Night = 18:00 - 06:00
-    /// </summary>
     public ShiftType ShiftType { get; set; }
 
-    /// <summary>
-    /// Estado del turno.
-    /// Open / Closed
-    /// </summary>
     public ShiftStatus Status { get; set; } = ShiftStatus.Open;
 
     /// <summary>
-    /// Fecha y hora de apertura.
+    /// Hora real de apertura, almacenada en UTC.
     /// </summary>
-    public DateTime StartedAt { get; set; }
+    public DateTime StartedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Fecha y hora de cierre.
+    /// Hora real de cierre, almacenada en UTC.
     /// </summary>
     public DateTime? EndedAt { get; set; }
 
-    // =====================================================
-    // RELACIONES
-    // =====================================================
-
-    /// <summary>
-    /// Nave seleccionada al iniciar el turno.
-    /// </summary>
     public Guid ShipId { get; set; }
 
     public Ship? Ship { get; set; }
 
-    /// <summary>
-    /// 
+    public ICollection<Reception> Receptions { get; set; } = new List<Reception>();
+
+    public ICollection<Dispatch> Dispatches { get; set; } = new List<Dispatch>();
+}

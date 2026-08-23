@@ -1,7 +1,7 @@
 namespace IQBF.Domain.Enums;
 
 /// <summary>
-/// Estado de un turno.
+/// Estado de un turno operativo.
 /// </summary>
 public enum ShiftStatus
 {
