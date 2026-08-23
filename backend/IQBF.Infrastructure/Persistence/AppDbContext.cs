@@ -84,7 +84,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(x => x.ReceptionId);
 
         // DISPATCH ITEMS
-        modelBbuilder.Entity<DispatchItem>()
+        modelBuilder.Entity<DispatchItem>()
             .HasOne(x => x.Dispatch)
             .WithMany(x => x.Items)
             .HasForeignKey(x => x.DispatchId);
