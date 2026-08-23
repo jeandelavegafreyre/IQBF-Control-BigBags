@@ -16,13 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 // -----------------------------
 // Configuration validation
 // -----------------------------
-var jwtKey = builder.Configuration["Jwt:Key"];
-if (string.IsNullOrWhiteSpace(jwtKey))
-{
-    throw new InvalidOperationException(
-        "Jwt:Key no está configurado. En desarrollo usa: " +
-        "dotnet user-secrets set \"Jwt:Key\" \"TU-CLAVE-SEGURA-DE-AL-MENOS-32-CARACTERES\"");
-}
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? "IQBF-DESIGN-TIME-KEY-ONLY-NOT-FOR-PRODUCTION-123456789";
 
 // -----------------------------
 // Application layers
