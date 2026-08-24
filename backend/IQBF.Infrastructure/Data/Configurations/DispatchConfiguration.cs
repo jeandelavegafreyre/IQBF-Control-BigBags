@@ -31,5 +31,11 @@ public class DispatchConfiguration : IEntityTypeConfiguration<Dispatch>
             .WithOne(x => x.Dispatch)
             .HasForeignKey(x => x.DispatchId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(x => x.TransactionNumber)
+            .IsRequired();
+
+        builder.HasIndex(x => new { x.ShiftId, x.TransactionNumber })
+            .IsUnique();
     }
 }
