@@ -11,6 +11,8 @@ public class Dispatch : BaseEntity
     public Guid ShiftId { get; set; }
 
     public Shift? Shift { get; set; }
+    
+    public int TransactionNumber { get; set; }
 
     public string Plate { get; set; } = string.Empty;
 
