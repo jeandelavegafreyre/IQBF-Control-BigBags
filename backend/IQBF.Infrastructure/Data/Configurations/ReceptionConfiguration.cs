@@ -11,11 +11,21 @@ public class ReceptionConfiguration : IEntityTypeConfiguration<Reception>
         builder.ToTable("Receptions");
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.TransactionNumber)
+            .IsRequired();
+
         builder.Property(x => x.TerminalTruck).HasMaxLength(30).IsRequired();
         builder.Property(x => x.Comment).HasMaxLength(100);
 
         builder.Property(x => x.CreatedBy).HasMaxLength(50);
         builder.Property(x => x.UpdatedBy).HasMaxLength(50);
+
+        builder.HasIndex(x => new
+        {
+            x.ShiftId,
+            x.TransactionNumber
+        })
+        .IsUnique();
 
         builder.HasOne(x => x.Shift)
             .WithMany(x => x.Receptions)

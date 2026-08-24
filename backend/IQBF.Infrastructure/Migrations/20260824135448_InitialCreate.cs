@@ -84,7 +84,7 @@ namespace IQBF.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BLs", x => x.Id);
-                    table.CheckConstraint("CK_BLs_TotalQuantity_NonNegative", "[TotalQuantity] >= 0");
+                    table.CheckConstraint("CK_BLs_TotalQuantity_Positive", "[TotalQuantity] > 0");
                     table.ForeignKey(
                         name: "FK_BLs_Products_ProductId",
                         column: x => x.ProductId,
@@ -132,6 +132,7 @@ namespace IQBF.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ShiftId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TransactionNumber = table.Column<int>(type: "int", nullable: false),
                     Plate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -156,6 +157,7 @@ namespace IQBF.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ShiftId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TransactionNumber = table.Column<int>(type: "int", nullable: false),
                     TerminalTruck = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -300,9 +302,10 @@ namespace IQBF.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Dispatches_ShiftId",
+                name: "IX_Dispatches_ShiftId_TransactionNumber",
                 table: "Dispatches",
-                column: "ShiftId");
+                columns: new[] { "ShiftId", "TransactionNumber" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_DispatchItems_BLId",
@@ -343,9 +346,10 @@ namespace IQBF.Infrastructure.Migrations
                 column: "ReceptionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Receptions_ShiftId",
+                name: "IX_Receptions_ShiftId_TransactionNumber",
                 table: "Receptions",
-                column: "ShiftId");
+                columns: new[] { "ShiftId", "TransactionNumber" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Shifts_ShipId_ShiftDate_ShiftType",

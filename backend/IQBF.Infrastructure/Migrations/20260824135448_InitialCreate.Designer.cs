@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IQBF.Infrastructure.Migrations
 {
     [DbContext(typeof(IQBFDbContext))]
-    [Migration("20260823231933_InitialCreate")]
+    [Migration("20260824135448_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -74,7 +74,7 @@ namespace IQBF.Infrastructure.Migrations
 
                     b.ToTable("BLs", null, t =>
                         {
-                            t.HasCheckConstraint("CK_BLs_TotalQuantity_NonNegative", "[TotalQuantity] >= 0");
+                            t.HasCheckConstraint("CK_BLs_TotalQuantity_Positive", "[TotalQuantity] > 0");
                         });
                 });
 
@@ -103,6 +103,9 @@ namespace IQBF.Infrastructure.Migrations
                     b.Property<Guid>("ShiftId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("TransactionNumber")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -112,7 +115,8 @@ namespace IQBF.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ShiftId");
+                    b.HasIndex("ShiftId", "TransactionNumber")
+                        .IsUnique();
 
                     b.ToTable("Dispatches", (string)null);
                 });
@@ -269,6 +273,9 @@ namespace IQBF.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int>("TransactionNumber")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -278,7 +285,8 @@ namespace IQBF.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ShiftId");
+                    b.HasIndex("ShiftId", "TransactionNumber")
+                        .IsUnique();
 
                     b.ToTable("Receptions", (string)null);
                 });
