@@ -10,7 +10,7 @@ public class BLConfiguration : IEntityTypeConfiguration<BL>
     {
         builder.ToTable("BLs", table =>
         {
-            table.HasCheckConstraint("CK_BLs_TotalQuantity_NonNegative", "[TotalQuantity] >= 0");
+            table.HasCheckConstraint("CK_BLs_TotalQuantity_Positive", "[TotalQuantity] > 0");
         });
 
         builder.HasKey(x => x.Id);
