@@ -28,8 +28,10 @@ public class DispatchService : IDispatchService
 
         if (!string.IsNullOrWhiteSpace(request.Comment) &&
             request.Comment.Trim().Length > 100)
+        {
             throw new ArgumentException(
                 "El comentario no puede exceder 100 caracteres.");
+        }
 
         var plate = (request.Plate ?? string.Empty)
             .Trim()
@@ -95,6 +97,37 @@ public class DispatchService : IDispatchService
         }
 
         // =====================================================
+        // VALIDAR SALDO DISPONIBLE POR BL
+        // =====================================================
+
+        foreach (var item in request.Items)
+        {
+            var bl = bls.First(x => x.Id == item.BLId);
+
+            var totalReceived = await _db.ReceptionItems
+                .Where(x => x.BLId == item.BLId)
+                .SumAsync(
+                    x => (decimal?)x.Quantity,
+                    cancellationToken) ?? 0m;
+
+            var totalDispatched = await _db.DispatchItems
+                .Where(x => x.BLId == item.BLId)
+                .SumAsync(
+                    x => (decimal?)x.Quantity,
+                    cancellationToken) ?? 0m;
+
+            var available = totalReceived - totalDispatched;
+
+            if (item.Quantity > available)
+            {
+                throw new InvalidOperationException(
+                    $"Saldo insuficiente para el BL {bl.Code}. " +
+                    $"Disponible: {available:N3}. " +
+                    $"Solicitado: {item.Quantity:N3}.");
+            }
+        }
+
+        // =====================================================
         // CORRELATIVO DE DESPACHO POR TURNO
         // =====================================================
 
@@ -112,9 +145,7 @@ public class DispatchService : IDispatchService
         var entity = new Dispatch
         {
             ShiftId = request.ShiftId,
-
             TransactionNumber = nextTransactionNumber,
-
             Plate = plate,
 
             Comment = string.IsNullOrWhiteSpace(request.Comment)

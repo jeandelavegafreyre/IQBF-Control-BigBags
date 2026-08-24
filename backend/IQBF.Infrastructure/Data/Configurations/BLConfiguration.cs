@@ -10,7 +10,9 @@ public class BLConfiguration : IEntityTypeConfiguration<BL>
     {
         builder.ToTable("BLs", table =>
         {
-            table.HasCheckConstraint("CK_BLs_TotalQuantity_Positive", "[TotalQuantity] > 0");
+            table.HasCheckConstraint(
+                "CK_BLs_TotalQuantity_Positive",
+                "[TotalQuantity] > 0");
         });
 
         builder.HasKey(x => x.Id);
@@ -19,12 +21,8 @@ public class BLConfiguration : IEntityTypeConfiguration<BL>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.HasIndex(x => new
-        {
-            x.ShipId,
-            x.Code
-        })
-        .IsUnique();
+        builder.HasIndex(x => new { x.ShipId, x.Code })
+            .IsUnique();
 
         builder.Property(x => x.TotalQuantity)
             .HasPrecision(18, 3)

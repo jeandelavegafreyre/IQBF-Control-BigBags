@@ -28,8 +28,10 @@ public class ReceptionService : IReceptionService
 
         if (!string.IsNullOrWhiteSpace(request.Comment) &&
             request.Comment.Trim().Length > 100)
+        {
             throw new ArgumentException(
                 "El comentario no puede exceder 100 caracteres.");
+        }
 
         var truck = (request.TerminalTruck ?? string.Empty).Trim();
 
@@ -113,9 +115,7 @@ public class ReceptionService : IReceptionService
         var entity = new Reception
         {
             ShiftId = request.ShiftId,
-
             TransactionNumber = nextTransactionNumber,
-
             TerminalTruck = truck,
 
             Comment = string.IsNullOrWhiteSpace(request.Comment)
