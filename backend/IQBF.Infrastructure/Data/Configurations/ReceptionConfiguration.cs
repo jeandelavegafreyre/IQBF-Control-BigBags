@@ -31,5 +31,11 @@ public class ReceptionConfiguration : IEntityTypeConfiguration<Reception>
             .WithOne(x => x.Reception)
             .HasForeignKey(x => x.ReceptionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(x => x.TransactionNumber)
+            .IsRequired();
+
+        builder.HasIndex(x => new { x.ShiftId, x.TransactionNumber })
+            .IsUnique();    
     }
 }
