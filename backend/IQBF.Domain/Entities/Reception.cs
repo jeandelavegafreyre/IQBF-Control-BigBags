@@ -12,6 +12,8 @@ public class Reception : BaseEntity
 
     public Shift? Shift { get; set; }
 
+    public int TransactionNumber { get; set; }
+
     /// <summary>
     /// Número/identificador del Terminal Truck.
     /// La validación de entrada numérica se aplica en Application/API.
