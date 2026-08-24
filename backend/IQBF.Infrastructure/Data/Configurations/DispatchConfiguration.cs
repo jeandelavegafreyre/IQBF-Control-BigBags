@@ -9,13 +9,31 @@ public class DispatchConfiguration : IEntityTypeConfiguration<Dispatch>
     public void Configure(EntityTypeBuilder<Dispatch> builder)
     {
         builder.ToTable("Dispatches");
+
         builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.Plate).HasMaxLength(20).IsRequired();
-        builder.Property(x => x.Comment).HasMaxLength(100);
+        builder.Property(x => x.TransactionNumber)
+            .IsRequired();
 
-        builder.Property(x => x.CreatedBy).HasMaxLength(50);
-        builder.Property(x => x.UpdatedBy).HasMaxLength(50);
+        builder.Property(x => x.Plate)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(x => x.Comment)
+            .HasMaxLength(100);
+
+        builder.Property(x => x.CreatedBy)
+            .HasMaxLength(50);
+
+        builder.Property(x => x.UpdatedBy)
+            .HasMaxLength(50);
+
+        builder.HasIndex(x => new
+        {
+            x.ShiftId,
+            x.TransactionNumber
+        })
+        .IsUnique();
 
         builder.HasOne(x => x.Shift)
             .WithMany(x => x.Dispatches)
@@ -31,11 +49,5 @@ public class DispatchConfiguration : IEntityTypeConfiguration<Dispatch>
             .WithOne(x => x.Dispatch)
             .HasForeignKey(x => x.DispatchId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Property(x => x.TransactionNumber)
-            .IsRequired();
-
-        builder.HasIndex(x => new { x.ShiftId, x.TransactionNumber })
-            .IsUnique();
     }
 }
