@@ -17,6 +17,10 @@ public class DashboardController : ControllerBase
         _dashboardService = dashboardService;
     }
 
+    // ============================================================
+    // RESUMEN GENERAL POR NAVE
+    // ============================================================
+
     [HttpGet("ships/{shipId:guid}/summary")]
     [ProducesResponseType(typeof(ShipSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -26,6 +30,24 @@ public class DashboardController : ControllerBase
     {
         var result = await _dashboardService.GetShipSummaryAsync(
             shipId,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    // ============================================================
+    // RESUMEN POR TURNO
+    // ============================================================
+
+    [HttpGet("shifts/{shiftId:guid}/summary")]
+    [ProducesResponseType(typeof(ShiftSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ShiftSummaryDto>> GetShiftSummary(
+        Guid shiftId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _dashboardService.GetShiftSummaryAsync(
+            shiftId,
             cancellationToken);
 
         return Ok(result);
