@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<IReceptionService, ReceptionService>();
         services.AddScoped<IDispatchService, DispatchService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         return services;
     }
 }
