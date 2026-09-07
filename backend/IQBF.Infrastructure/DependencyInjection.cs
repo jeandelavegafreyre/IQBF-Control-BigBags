@@ -1,4 +1,6 @@
+using IQBF.Domain.Interfaces;
 using IQBF.Infrastructure.Data;
+using IQBF.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +29,8 @@ public static class DependencyInjection
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorNumbersToAdd: null);
             }));
+
+        services.AddScoped<IPhotoStorageService, LocalPhotoStorageService>();
 
         return services;
     }

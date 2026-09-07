@@ -6,7 +6,8 @@ namespace IQBF.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(
+        this IServiceCollection services)
     {
         services.AddScoped<IShipService, ShipService>();
         services.AddScoped<IProductService, ProductService>();
@@ -16,6 +17,10 @@ public static class DependencyInjection
         services.AddScoped<IDispatchService, DispatchService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDashboardService, DashboardService>();
+
+        // Evidencia fotográfica
+        services.AddScoped<IPhotoEvidenceService, PhotoEvidenceService>();
+
         return services;
     }
 }

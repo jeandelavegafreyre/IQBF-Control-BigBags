@@ -8,6 +8,7 @@ using IQBF.Domain.Entities;
 using IQBF.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -79,7 +80,8 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,
             ValidAudience = audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
 
@@ -159,12 +161,43 @@ app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
 
+// -----------------------------
+// Photo static files
+// -----------------------------
+// Debe coincidir con la ubicación utilizada por
+// LocalPhotoStorageService.
+var photoStoragePath = Path.Combine(
+    AppContext.BaseDirectory,
+    "storage",
+    "photos");
+
+// Garantiza que la carpeta exista aunque todavía
+// no se hayan cargado fotografías.
+Directory.CreateDirectory(photoStoragePath);
+
+// Expone:
+// storage/photos/...  ->  /photos/...
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(photoStoragePath),
+    RequestPath = "/photos"
+});
+
+// -----------------------------
+// Authentication / Authorization
+// -----------------------------
 app.UseAuthentication();
 app.UseAuthorization();
 
+// -----------------------------
+// API endpoints
+// -----------------------------
 app.MapControllers();
 app.MapHub<OperationsHub>("/hubs/operations");
 
+// -----------------------------
+// Initial seed
+// -----------------------------
 // Seed seguro opcional.
 // Solo crea Admin si UID + Password fueron configurados explícitamente.
 await AdminSeeder.SeedAsync(app.Services, app.Configuration);
