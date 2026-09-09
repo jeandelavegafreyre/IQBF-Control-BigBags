@@ -31,7 +31,8 @@
 }
 
 .shift-ship,
-.shift-pending {
+.shift-pending,
+.status-message {
   margin: 0 0 1rem;
   color: #5f5a56;
   font-size: 1.15rem;
@@ -40,6 +41,83 @@
 
 .shift-pending {
   margin-bottom: 2rem;
+}
+
+.status-badge {
+  display: inline-block;
+  margin: 0 0 1.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: #e6f5eb;
+  color: #1d6d3c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-message {
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  color: #a3291b;
+  font-weight: 600;
+}
+
+.shift-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field-group {
+  display: grid;
+  gap: 0.55rem;
+  color: #2d2a28;
+  font-weight: 600;
+}
+
+.field-group span {
+  font-size: 0.96rem;
+}
+
+.field-group input,
+.field-group select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d7d1ca;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #1f1e1d;
+  font: inherit;
+}
+
+.field-group input[readonly] {
+  background: #f7f5f2;
+  color: #4a4845;
+}
+
+.shift-summary {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.25rem 0 2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #efd7bf;
+  border-radius: 0.9rem;
+  background: #fffaf5;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #4b433d;
+  font-size: 1rem;
+}
+
+.summary-label {
+  color: #716961;
 }
 
 .shift-actions {
@@ -53,7 +131,7 @@
   padding: 0.7rem 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition: background-color 160ms ease, border-color 160ms ease, opacity 160ms ease;
 }
 
 .shift-primary-action {
@@ -68,16 +146,32 @@
   background: #b94f00;
 }
 
-.shift-secondary-action {
+.shift-primary-action:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.shift-secondary-action,
+.shift-ghost-action {
   color: #b94f00;
   border: 1px solid #eadfd5;
   background: #ffffff;
 }
 
 .shift-secondary-action:hover,
-.shift-secondary-action:focus-visible {
+.shift-secondary-action:focus-visible,
+.shift-ghost-action:hover,
+.shift-ghost-action:focus-visible {
   border-color: #ed6c02;
   background: #fff7ef;
+}
+
+.shift-ghost-action {
+  margin-top: 1rem;
+}
+
+.inline-logout {
+  justify-content: flex-end;
 }
 
 @media (max-width: 600px) {
@@ -88,5 +182,10 @@
 
   .shift-actions {
     flex-direction: column;
+  }
+
+  .summary-row {
+    flex-direction: column;
+    gap: 0.25rem;
   }
 }

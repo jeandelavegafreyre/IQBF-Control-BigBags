@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
 import { useOperation } from './context/OperationContext'
 import { LoginPage } from './pages/Login/LoginPage'
+import { OperationsPage } from './pages/Operations/OperationsPage'
 import { ShiftStartPage } from './pages/Shift/ShiftStartPage'
 import { getActiveShips } from './services/shipService'
 import type { Ship } from './types/ships'
@@ -108,6 +109,20 @@ function ShiftRoute() {
   return selectedShip ? <ShiftStartPage /> : <Navigate to="/ships" replace />
 }
 
+function OperationsRoute() {
+  const { selectedShip, activeShift } = useOperation()
+
+  if (!selectedShip) {
+    return <Navigate to="/ships" replace />
+  }
+
+  if (!activeShift) {
+    return <Navigate to="/shift" replace />
+  }
+
+  return <OperationsPage />
+}
+
 export default function App() {
   const { isAuthenticated, isLoading } = useAuth()
 
@@ -131,6 +146,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ShiftRoute />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/operations"
+        element={
+          <ProtectedRoute>
+            <OperationsRoute />
           </ProtectedRoute>
         }
       />
