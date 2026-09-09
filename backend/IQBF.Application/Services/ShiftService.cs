@@ -12,6 +12,37 @@ public class ShiftService : IShiftService
     private readonly IQBFDbContext _db;
     public ShiftService(IQBFDbContext db) => _db = db;
 
+    public async Task<ShiftDto?> GetOpenAsync(Guid shipId, CancellationToken cancellationToken = default)
+    {
+        if (shipId == Guid.Empty)
+            throw new ArgumentException("shipId es obligatorio.");
+
+        var openShifts = await _db.Shifts
+            .AsNoTracking()
+            .Include(x => x.Ship)
+            .Where(x => x.ShipId == shipId && x.Status == ShiftStatus.Open)
+            .ToListAsync(cancellationToken);
+
+        if (openShifts.Count > 1)
+        {
+            throw new InvalidOperationException(
+                "Existen múltiples turnos abiertos para esta nave. Se requiere regularizar la situación.");
+        }
+
+        var shift = openShifts.SingleOrDefault();
+        return shift is null
+            ? null
+            : new ShiftDto(
+                shift.Id,
+                shift.ShiftDate,
+                shift.ShiftType,
+                shift.Status,
+                shift.StartedAt,
+                shift.EndedAt,
+                shift.ShipId,
+                shift.Ship!.Name);
+    }
+
     public async Task<ShiftDto> StartAsync(StartShiftRequest request, string actorUid, CancellationToken cancellationToken = default)
     {
         var ship = await _db.Ships.FirstOrDefaultAsync(x => x.Id == request.ShipId, cancellationToken)

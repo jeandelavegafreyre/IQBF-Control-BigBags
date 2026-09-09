@@ -13,6 +13,13 @@ public class ShiftsController : ControllerBase
     private readonly IShiftService _service;
     public ShiftsController(IShiftService service) => _service = service;
 
+    [HttpGet("open")]
+    public async Task<IActionResult> GetOpen([FromQuery] Guid shipId, CancellationToken cancellationToken)
+    {
+        var shift = await _service.GetOpenAsync(shipId, cancellationToken);
+        return shift is null ? NoContent() : Ok(shift);
+    }
+
     [HttpPost("start")]
     public async Task<IActionResult> Start(StartShiftRequest request, CancellationToken cancellationToken) =>
         Ok(await _service.StartAsync(request, User.Identity!.Name!, cancellationToken));
