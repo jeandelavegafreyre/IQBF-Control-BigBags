@@ -98,6 +98,34 @@ public class ReceptionService : IReceptionService
         }
 
         // =====================================================
+        // VALIDAR CANTIDAD DECLARADA POR BL
+        // =====================================================
+
+        foreach (var item in request.Items)
+        {
+            var bl = bls.First(x => x.Id == item.BLId);
+
+            var totalReceived = await _db.ReceptionItems
+                .Where(x => x.BLId == item.BLId)
+                .SumAsync(
+                    x => (decimal?)x.Quantity,
+                    cancellationToken) ?? 0m;
+
+            var available = bl.TotalQuantity - totalReceived;
+            var newTotal = totalReceived + item.Quantity;
+
+            if (newTotal > bl.TotalQuantity)
+            {
+                throw new InvalidOperationException(
+                    $"El BL {bl.Code} excede la cantidad declarada. " +
+                    $"Declarado: {bl.TotalQuantity:N3}. " +
+                    $"Recibido: {totalReceived:N3}. " +
+                    $"Intento: {item.Quantity:N3}. " +
+                    $"Disponible: {available:N3}.");
+            }
+        }
+
+        // =====================================================
         // CORRELATIVO DE RECEPCIÓN POR TURNO
         // =====================================================
 
