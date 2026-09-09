@@ -18,7 +18,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #ffffff;
+  background: #f7f6f2;
 }
 
 button,
@@ -26,21 +26,40 @@ a {
   font: inherit;
 }
 
-.shell {
-  display: grid;
+.app-shell {
   min-height: 100vh;
-  place-items: center;
-  padding: 2rem 1rem;
-  background: linear-gradient(135deg, #ffffff 0%, #fffaf5 100%);
+  padding: 2rem clamp(1rem, 5vw, 5rem);
+  background: linear-gradient(135deg, #f7f6f2 0%, #fffaf5 52%, #f3f7f6 100%);
 }
 
-.welcome-panel {
-  width: min(100%, 44rem);
-  padding: clamp(2rem, 6vw, 4.5rem);
+.app-header,
+.ship-selection {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1rem 0 3rem;
+}
+
+.ship-selection {
+  padding: clamp(1.5rem, 4vw, 3rem);
   border: 1px solid var(--border);
-  border-top: 4px solid var(--primary);
   background: #ffffff;
-  box-shadow: 0 1.5rem 4rem rgba(91, 54, 21, 0.08);
+  box-shadow: 0 1.5rem 4rem rgba(40, 58, 51, 0.08);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .eyebrow {
@@ -52,44 +71,119 @@ a {
 }
 
 h1 {
-  margin: 0.75rem 0 1rem;
+  margin: 0.75rem 0 0;
   color: #1e1e1e;
-  font-size: clamp(2rem, 6vw, 4rem);
+  font-size: clamp(2rem, 5vw, 3.5rem);
   line-height: 1;
+}
+
+h2 {
+  margin: 0.5rem 0 0;
+  color: #1e1e1e;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 p {
   max-width: 34rem;
-  margin: 0 0 2rem;
+  margin: 0;
   color: #5f5a56;
   font-size: clamp(1rem, 2vw, 1.15rem);
   line-height: 1.6;
 }
 
-.primary-action {
+.secondary-action {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
   padding: 0.7rem 1.1rem;
-  color: #ffffff;
-  background: var(--primary);
+  color: var(--primary-dark);
+  border: 1px solid var(--border);
+  background: #ffffff;
   font-weight: 700;
   text-decoration: none;
-  transition: background-color 160ms ease;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
 }
 
-.primary-action:hover,
-.primary-action:focus-visible {
-  background: var(--primary-dark);
+.secondary-action:hover,
+.secondary-action:focus-visible {
+  border-color: var(--primary);
+  background: var(--surface-muted);
+}
+
+.user-badge,
+.ship-status {
+  color: var(--primary-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.user-badge {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.status-message {
+  padding: 2rem 0 0.5rem;
+}
+
+.error-message {
+  color: #a32d22;
+}
+
+.ship-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem;
+  padding-top: 1.5rem;
+}
+
+.ship-option {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 9rem;
+  padding: 1.25rem;
+  color: #5f5a56;
+  border: 1px solid var(--border);
+  border-top: 4px solid transparent;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.ship-option:hover,
+.ship-option:focus-visible {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.ship-option.is-selected {
+  border-color: var(--primary);
+  border-top-color: var(--primary);
+  background: var(--surface-muted);
+}
+
+.ship-option strong {
+  color: #1e1e1e;
+  font-size: 1.2rem;
 }
 
 @media (max-width: 600px) {
-  .shell {
-    align-items: start;
-    padding-top: 1rem;
+  .app-shell {
+    padding: 1rem;
   }
 
-  .welcome-panel {
-    margin-top: 10vh;
+  .app-header {
+    align-items: start;
+    flex-direction: column;
+    padding: 1rem 0 2rem;
+  }
+
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
   }
 }

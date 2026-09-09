@@ -13,7 +13,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate('/app', { replace: true })
+      navigate('/ships', { replace: true })
     }
   }, [isAuthenticated, isLoading, navigate])
 
@@ -32,7 +32,7 @@ export function LoginPage() {
 
     try {
       await login({ uid: trimmedUid, password })
-      navigate('/app', { replace: true })
+      navigate('/ships', { replace: true })
     } catch (caughtError) {
       const httpError = caughtError as {
         response?: { data?: { message?: string; error?: string } }

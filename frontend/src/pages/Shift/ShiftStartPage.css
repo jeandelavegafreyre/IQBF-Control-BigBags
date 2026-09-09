@@ -1,0 +1,92 @@
+.shift-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #f7f6f2 0%, #fffaf5 52%, #f3f7f6 100%);
+}
+
+.shift-panel {
+  width: min(100%, 44rem);
+  padding: clamp(2rem, 6vw, 4.5rem);
+  border: 1px solid #eadfd5;
+  border-top: 4px solid #ed6c02;
+  background: #ffffff;
+  box-shadow: 0 1.5rem 4rem rgba(40, 58, 51, 0.08);
+}
+
+.shift-brand {
+  color: #b94f00;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.shift-panel h1 {
+  margin: 0.75rem 0 1.5rem;
+  color: #1e1e1e;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 1;
+}
+
+.shift-ship,
+.shift-pending {
+  margin: 0 0 1rem;
+  color: #5f5a56;
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+.shift-pending {
+  margin-bottom: 2rem;
+}
+
+.shift-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.shift-actions button {
+  min-height: 2.75rem;
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.shift-primary-action {
+  color: #ffffff;
+  border: 1px solid #ed6c02;
+  background: #ed6c02;
+}
+
+.shift-primary-action:hover,
+.shift-primary-action:focus-visible {
+  border-color: #b94f00;
+  background: #b94f00;
+}
+
+.shift-secondary-action {
+  color: #b94f00;
+  border: 1px solid #eadfd5;
+  background: #ffffff;
+}
+
+.shift-secondary-action:hover,
+.shift-secondary-action:focus-visible {
+  border-color: #ed6c02;
+  background: #fff7ef;
+}
+
+@media (max-width: 600px) {
+  .shift-page {
+    align-items: start;
+    padding-top: 10vh;
+  }
+
+  .shift-actions {
+    flex-direction: column;
+  }
+}
