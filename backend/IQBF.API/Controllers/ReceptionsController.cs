@@ -33,7 +33,7 @@ public class ReceptionsController : ControllerBase
             User.Identity!.Name!,
             cancellationToken);
 
-        await _hub.Clients.All.SendAsync(
+        await _hub.Clients.Group(OperationsHub.ShiftGroup(request.ShiftId)).SendAsync(
             "ReceptionCreated",
             result,
             cancellationToken);
