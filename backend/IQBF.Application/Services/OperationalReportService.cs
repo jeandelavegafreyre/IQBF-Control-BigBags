@@ -45,6 +45,34 @@ public sealed class OperationalReportService : IOperationalReportService
             .Include(x => x.Photos)
             .ToListAsync(cancellationToken);
 
+        var creatorUids = receptions
+            .Select(x => x.CreatedBy)
+            .Concat(dispatches.Select(x => x.CreatedBy))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToList();
+
+        var operatorNames = creatorUids.Count == 0
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : (await _dbContext.Users
+                .AsNoTracking()
+                .Where(x => creatorUids.Contains(x.UID))
+                .Select(x => new { x.UID, x.FirstName, x.LastName })
+                .ToListAsync(cancellationToken))
+                .ToDictionary(
+                    x => x.UID,
+                    x => $"{x.FirstName} {x.LastName}".Trim(),
+                    StringComparer.OrdinalIgnoreCase);
+
+        string? ResolveOperatorName(string? uid)
+        {
+            if (string.IsNullOrWhiteSpace(uid)) return uid;
+            return operatorNames.TryGetValue(uid.Trim(), out var fullName) && !string.IsNullOrWhiteSpace(fullName)
+                ? fullName
+                : uid;
+        }
+
         var movements = new List<OperationalMovementDto>(receptions.Count + dispatches.Count);
 
         movements.AddRange(receptions.Select(reception => new OperationalMovementDto(
@@ -52,7 +80,7 @@ public sealed class OperationalReportService : IOperationalReportService
             "Reception",
             reception.TransactionNumber,
             reception.CreatedAt,
-            reception.CreatedBy,
+            ResolveOperatorName(reception.CreatedBy),
             reception.TerminalTruck,
             reception.Comment,
             reception.Items
@@ -78,7 +106,7 @@ public sealed class OperationalReportService : IOperationalReportService
             "Dispatch",
             dispatch.TransactionNumber,
             dispatch.CreatedAt,
-            dispatch.CreatedBy,
+            ResolveOperatorName(dispatch.CreatedBy),
             dispatch.Plate,
             dispatch.Comment,
             dispatch.Items
