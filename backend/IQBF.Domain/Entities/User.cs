@@ -27,5 +27,11 @@ public class User : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Versión de seguridad incluida en el JWT. Se incrementa ante cambios sensibles
+    /// para invalidar permanentemente todas las sesiones emitidas previamente.
+    /// </summary>
+    public int SecurityVersion { get; set; } = 1;
+
     public string FullName => $"{FirstName} {LastName}".Trim();
 }
