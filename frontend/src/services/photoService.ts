@@ -11,6 +11,11 @@ export async function uploadReceptionPhoto(receptionId: string, file: File): Pro
   const response = await apiClient.post<PhotoEvidence>(
     `/api/receptions/${receptionId}/photos`,
     buildPhotoFormData(file),
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   )
   return response.data
 }
@@ -19,6 +24,11 @@ export async function uploadDispatchPhoto(dispatchId: string, file: File): Promi
   const response = await apiClient.post<PhotoEvidence>(
     `/api/dispatches/${dispatchId}/photos`,
     buildPhotoFormData(file),
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
   )
   return response.data
 }
