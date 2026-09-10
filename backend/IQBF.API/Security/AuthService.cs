@@ -75,6 +75,9 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             throw new ArgumentException("La contraseña debe tener al menos 8 caracteres.");
 
+        if (!Enum.IsDefined(typeof(UserRole), request.Role))
+            throw new ArgumentException("Rol de usuario no válido.");
+
         if (await _db.Users.AnyAsync(x => x.UID == uid, cancellationToken))
             throw new InvalidOperationException("El UID ya está registrado.");
 
@@ -83,7 +86,7 @@ public class AuthService : IAuthService
             UID = uid,
             FirstName = firstName,
             LastName = lastName,
-            Role = UserRole.User,
+            Role = request.Role,
             IsActive = true,
             CreatedBy = uid
         };
