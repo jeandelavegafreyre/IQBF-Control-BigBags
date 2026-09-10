@@ -10,6 +10,9 @@ function normalizeRole(value: unknown): string {
   }
 
   const text = String(value ?? '').trim()
+  if (text === '1') return 'Administrator'
+  if (text === '2') return 'Yard'
+  if (text === '3') return 'User'
   return text || 'Unknown'
 }
 
@@ -18,7 +21,10 @@ function normalizeAuthResponse(data: AuthResponse): AuthResponse {
     throw new Error('La respuesta del servidor no incluye la sesión autenticada.')
   }
 
-  return data
+  return {
+    ...data,
+    role: normalizeRole(data.role),
+  }
 }
 
 export async function loginUser(payload: LoginRequest): Promise<AuthResponse> {
