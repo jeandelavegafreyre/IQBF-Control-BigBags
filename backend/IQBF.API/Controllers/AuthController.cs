@@ -1,4 +1,5 @@
 using IQBF.Application.DTOs.Auth;
+using IQBF.Application.DTOs.Users;
 using IQBF.API.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
