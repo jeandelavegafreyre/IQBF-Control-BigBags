@@ -1,5 +1,6 @@
 using IQBF.Application.DTOs.Auth;
 using IQBF.Application.DTOs.Users;
+using IQBF.Application.Interfaces;
 using IQBF.Domain.Entities;
 using IQBF.Domain.Enums;
 using IQBF.Infrastructure.Data;
@@ -13,12 +14,18 @@ public class AuthService : IAuthService
     private readonly IQBFDbContext _db;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly IConfiguration _configuration;
+    private readonly IUserSessionRevoker _sessionRevoker;
 
-    public AuthService(IQBFDbContext db, IPasswordHasher<User> passwordHasher, IConfiguration configuration)
+    public AuthService(
+        IQBFDbContext db,
+        IPasswordHasher<User> passwordHasher,
+        IConfiguration configuration,
+        IUserSessionRevoker sessionRevoker)
     {
         _db = db;
         _passwordHasher = passwordHasher;
         _configuration = configuration;
+        _sessionRevoker = sessionRevoker;
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -63,6 +70,7 @@ public class AuthService : IAuthService
         user.SecurityVersion++;
         user.UpdatedBy = Normalize(actorUid);
         await _db.SaveChangesAsync(cancellationToken);
+        _sessionRevoker.Revoke(userId);
     }
 
     private AuthResponse CreateResponse(User user)
