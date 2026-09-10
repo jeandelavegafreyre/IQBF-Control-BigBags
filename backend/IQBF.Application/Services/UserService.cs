@@ -69,7 +69,7 @@ public class UserService : IUserService
         });
 
         if (changed)
-            _sessionRevoker.Revoke(userId);
+            await _sessionRevoker.RevokeAsync(userId, cancellationToken);
     }
 
     public async Task UpdateStatusAsync(Guid userId, UpdateUserStatusRequest request, string actorUid, CancellationToken cancellationToken = default)
@@ -113,6 +113,6 @@ public class UserService : IUserService
         });
 
         if (changed)
-            _sessionRevoker.Revoke(userId);
+            await _sessionRevoker.RevokeAsync(userId, cancellationToken);
     }
 }
