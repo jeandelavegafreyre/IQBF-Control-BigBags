@@ -25,72 +25,76 @@ public class UserService : IUserService
             throw new ArgumentException("Rol de usuario no válido.");
 
         var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
+        var strategy = _db.Database.CreateExecutionStrategy();
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
-
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
-            ?? throw new KeyNotFoundException("Usuario no encontrado.");
-
-        if (user.UID == normalizedActorUid && user.Role == UserRole.Administrator && request.Role != UserRole.Administrator)
-            throw new InvalidOperationException("No puedes quitarte tu propio rol de Administrador.");
-
-        if (user.Role == UserRole.Administrator && request.Role != UserRole.Administrator && user.IsActive)
+        await strategy.ExecuteAsync(async () =>
         {
-            var activeAdministratorCount = await _db.Users.CountAsync(
-                x => x.IsActive && x.Role == UserRole.Administrator,
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
                 cancellationToken);
 
-            if (activeAdministratorCount <= 1)
-                throw new InvalidOperationException("No se puede cambiar el rol del último Administrador activo.");
-        }
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
+                ?? throw new KeyNotFoundException("Usuario no encontrado.");
 
-        if (user.Role == request.Role)
-        {
+            if (user.UID == normalizedActorUid && user.Role == UserRole.Administrator && request.Role != UserRole.Administrator)
+                throw new InvalidOperationException("No puedes quitarte tu propio rol de Administrador.");
+
+            if (user.Role == UserRole.Administrator && request.Role != UserRole.Administrator && user.IsActive)
+            {
+                var activeAdministratorCount = await _db.Users.CountAsync(
+                    x => x.IsActive && x.Role == UserRole.Administrator,
+                    cancellationToken);
+
+                if (activeAdministratorCount <= 1)
+                    throw new InvalidOperationException("No se puede cambiar el rol del último Administrador activo.");
+            }
+
+            if (user.Role != request.Role)
+            {
+                user.Role = request.Role;
+                user.UpdatedBy = normalizedActorUid;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
             await transaction.CommitAsync(cancellationToken);
-            return;
-        }
-
-        user.Role = request.Role;
-        user.UpdatedBy = normalizedActorUid;
-        await _db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        });
     }
 
     public async Task UpdateStatusAsync(Guid userId, UpdateUserStatusRequest request, string actorUid, CancellationToken cancellationToken = default)
     {
         var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
+        var strategy = _db.Database.CreateExecutionStrategy();
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
-
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
-            ?? throw new KeyNotFoundException("Usuario no encontrado.");
-
-        if (user.IsActive == request.IsActive)
+        await strategy.ExecuteAsync(async () =>
         {
-            await transaction.CommitAsync(cancellationToken);
-            return;
-        }
-
-        if (user.UID == normalizedActorUid && !request.IsActive)
-            throw new InvalidOperationException("No puedes desactivar tu propia cuenta durante una sesión activa.");
-
-        if (user.Role == UserRole.Administrator && user.IsActive && !request.IsActive)
-        {
-            var activeAdministratorCount = await _db.Users.CountAsync(
-                x => x.IsActive && x.Role == UserRole.Administrator,
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
                 cancellationToken);
 
-            if (activeAdministratorCount <= 1)
-                throw new InvalidOperationException("No se puede desactivar al último Administrador activo.");
-        }
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
+                ?? throw new KeyNotFoundException("Usuario no encontrado.");
 
-        user.IsActive = request.IsActive;
-        user.UpdatedBy = normalizedActorUid;
-        await _db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            if (user.IsActive != request.IsActive)
+            {
+                if (user.UID == normalizedActorUid && !request.IsActive)
+                    throw new InvalidOperationException("No puedes desactivar tu propia cuenta durante una sesión activa.");
+
+                if (user.Role == UserRole.Administrator && user.IsActive && !request.IsActive)
+                {
+                    var activeAdministratorCount = await _db.Users.CountAsync(
+                        x => x.IsActive && x.Role == UserRole.Administrator,
+                        cancellationToken);
+
+                    if (activeAdministratorCount <= 1)
+                        throw new InvalidOperationException("No se puede desactivar al último Administrador activo.");
+                }
+
+                user.IsActive = request.IsActive;
+                user.UpdatedBy = normalizedActorUid;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        });
     }
 }
