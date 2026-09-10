@@ -12,9 +12,9 @@ public record ShiftSummaryDto(
     DateTime? EndedAt,
     Guid ShipId,
     string ShipName,
-    decimal ReceivedQuantity,
-    decimal DispatchedQuantity,
-    decimal NetQuantity,
+    int ReceivedQuantity,
+    int DispatchedQuantity,
+    int NetQuantity,
     [property: JsonPropertyName("bls")]
     IReadOnlyCollection<ShiftBLBalanceDto> BLs
 );
