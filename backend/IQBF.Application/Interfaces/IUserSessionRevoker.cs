@@ -2,5 +2,5 @@ namespace IQBF.Application.Interfaces;
 
 public interface IUserSessionRevoker
 {
-    void Revoke(Guid userId);
+    Task RevokeAsync(Guid userId, CancellationToken cancellationToken = default);
 }
