@@ -18,6 +18,9 @@ export async function createBL(code: string, totalQuantity: number, shipId: stri
 export async function getUsers(): Promise<UserSummary[]> {
   return (await apiClient.get<UserSummary[]>('/api/users')).data
 }
+export async function createUser(uid: string, firstName: string, lastName: string, password: string): Promise<void> {
+  await apiClient.post('/api/auth/register', { uid, firstName, lastName, password })
+}
 export async function updateUserRole(userId: string, role: number): Promise<void> {
   await apiClient.put(`/api/users/${userId}/role`, { role })
 }
