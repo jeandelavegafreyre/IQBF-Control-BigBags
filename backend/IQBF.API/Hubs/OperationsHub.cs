@@ -11,13 +11,62 @@ namespace IQBF.API.Hubs;
 public class OperationsHub : Hub
 {
     private readonly IQBFDbContext _db;
+    private readonly OperationsConnectionRegistry _registry;
 
-    public OperationsHub(IQBFDbContext db)
+    public OperationsHub(IQBFDbContext db, OperationsConnectionRegistry registry)
     {
         _db = db;
+        _registry = registry;
     }
 
     public static string ShiftGroup(Guid shiftId) => $"shift:{shiftId:N}";
+
+    public override async Task OnConnectedAsync()
+    {
+        if (!await IsCurrentSessionValidAsync())
+        {
+            Context.Abort();
+            return;
+        }
+
+        var userIdValue = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            Context.Abort();
+            return;
+        }
+
+        _registry.Register(userId, Context.ConnectionId, Context);
+
+        var shiftIdValue = Context.GetHttpContext()?.Request.Query["shiftId"].ToString();
+        if (Guid.TryParse(shiftIdValue, out var shiftId))
+        {
+            var shiftIsOpen = await _db.Shifts
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.Id == shiftId && x.Status == ShiftStatus.Open,
+                    Context.ConnectionAborted);
+
+            if (shiftIsOpen)
+            {
+                await Groups.AddToGroupAsync(
+                    Context.ConnectionId,
+                    ShiftGroup(shiftId),
+                    Context.ConnectionAborted);
+            }
+        }
+
+        await base.OnConnectedAsync();
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        var userIdValue = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userIdValue, out var userId))
+            _registry.Unregister(userId, Context.ConnectionId);
+
+        return base.OnDisconnectedAsync(exception);
+    }
 
     public async Task JoinShift(Guid shiftId)
     {
