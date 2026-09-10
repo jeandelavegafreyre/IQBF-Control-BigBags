@@ -1,3 +1,4 @@
+using System.Data;
 using IQBF.Application.DTOs.Auth;
 using IQBF.Application.DTOs.Users;
 using IQBF.Application.Interfaces;
@@ -23,10 +24,16 @@ public class UserService : IUserService
         if (!Enum.IsDefined(typeof(UserRole), request.Role))
             throw new ArgumentException("Rol de usuario no válido.");
 
+        var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
+
+        // SERIALIZABLE evita que dos cambios concurrentes de Administradores
+        // puedan superar simultáneamente la validación del "último Administrador".
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Usuario no encontrado.");
-
-        var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
 
         if (user.UID == normalizedActorUid && user.Role == UserRole.Administrator && request.Role != UserRole.Administrator)
             throw new InvalidOperationException("No puedes quitarte tu propio rol de Administrador.");
@@ -42,10 +49,14 @@ public class UserService : IUserService
         }
 
         if (user.Role == request.Role)
+        {
+            await transaction.CommitAsync(cancellationToken);
             return;
+        }
 
         user.Role = request.Role;
         user.UpdatedBy = normalizedActorUid;
         await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 }
