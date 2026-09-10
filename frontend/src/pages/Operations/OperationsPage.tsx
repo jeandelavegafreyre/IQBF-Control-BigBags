@@ -8,6 +8,7 @@ import { createReception } from '../../services/receptionService'
 import { createDispatch } from '../../services/dispatchService'
 import { uploadDispatchPhoto, uploadReceptionPhoto } from '../../services/photoService'
 import { closeShift } from '../../services/shiftService'
+import { createOperationsConnection } from '../../services/operationsHubService'
 import type { BL } from '../../types/bls'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import './OperationsPage.css'
@@ -81,7 +82,7 @@ function SummaryMetric({ label, value }: SummaryMetricProps) {
 
 export function OperationsPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, token } = useAuth()
   const { selectedShip, activeShift, clearActiveShift, clearOperation } = useOperation()
   const [bls, setBls] = useState<BL[]>([])
   const [shipSummary, setShipSummary] = useState<ShipSummary | null>(null)
@@ -185,6 +186,31 @@ export function OperationsPage() {
       isMounted = false
     }
   }, [activeShift, navigate, selectedShip])
+
+  useEffect(() => {
+    if (!token || !activeShift) return
+
+    const connection = createOperationsConnection(token)
+    let disposed = false
+
+    const refreshFromHub = () => {
+      if (!disposed) void refreshSummaries()
+    }
+
+    connection.on('ReceptionCreated', refreshFromHub)
+    connection.on('DispatchCreated', refreshFromHub)
+
+    connection.start().catch(() => {
+      // La operación sigue funcionando por HTTP aunque SignalR no esté disponible.
+    })
+
+    return () => {
+      disposed = true
+      connection.off('ReceptionCreated', refreshFromHub)
+      connection.off('DispatchCreated', refreshFromHub)
+      void connection.stop()
+    }
+  }, [activeShift?.id, token])
 
   async function refreshSummaries() {
     if (!activeShift) return
