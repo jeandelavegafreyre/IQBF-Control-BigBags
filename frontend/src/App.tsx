@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext'
 import { useOperation } from './context/OperationContext'
 import { LoginPage } from './pages/Login/LoginPage'
 import { OperationsPage } from './pages/Operations/OperationsPage'
+import { HistoryPage } from './pages/History/HistoryPage'
 import { AdminPage } from './pages/Admin/AdminPage'
 import { ShiftStartPage } from './pages/Shift/ShiftStartPage'
 import { getActiveShips } from './services/shipService'
@@ -101,7 +102,6 @@ function ShipsPage() {
             })}
           </div>
         ) : null}
-
       </section>
     </main>
   )
@@ -109,66 +109,36 @@ function ShipsPage() {
 
 function ShiftRoute() {
   const { selectedShip } = useOperation()
-
   return selectedShip ? <ShiftStartPage /> : <Navigate to="/ships" replace />
 }
 
 function OperationsRoute() {
   const { selectedShip, activeShift } = useOperation()
-
-  if (!selectedShip) {
-    return <Navigate to="/ships" replace />
-  }
-
-  if (!activeShift) {
-    return <Navigate to="/shift" replace />
-  }
-
+  if (!selectedShip) return <Navigate to="/ships" replace />
+  if (!activeShift) return <Navigate to="/shift" replace />
   return <OperationsPage />
+}
+
+function HistoryRoute() {
+  const { selectedShip, activeShift } = useOperation()
+  if (!selectedShip) return <Navigate to="/ships" replace />
+  if (!activeShift) return <Navigate to="/shift" replace />
+  return <HistoryPage />
 }
 
 export default function App() {
   const { isAuthenticated, isLoading } = useAuth()
 
-  if (isLoading) {
-    return <div className="session-loading">Cargando sesión…</div>
-  }
+  if (isLoading) return <div className="session-loading">Cargando sesión…</div>
 
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/ships" replace /> : <LoginPage />} />
-      <Route
-        path="/ships"
-        element={
-          <ProtectedRoute>
-            <ShipsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/shift"
-        element={
-          <ProtectedRoute>
-            <ShiftRoute />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/operations"
-        element={
-          <ProtectedRoute>
-            <OperationsRoute />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/ships" element={<ProtectedRoute><ShipsPage /></ProtectedRoute>} />
+      <Route path="/shift" element={<ProtectedRoute><ShiftRoute /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+      <Route path="/operations" element={<ProtectedRoute><OperationsRoute /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><HistoryRoute /></ProtectedRoute>} />
       <Route path="/app" element={<Navigate to="/ships" replace />} />
       <Route path="/" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
       <Route path="*" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
