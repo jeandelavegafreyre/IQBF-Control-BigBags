@@ -24,3 +24,6 @@ export async function createUser(uid: string, firstName: string, lastName: strin
 export async function updateUserRole(userId: string, role: number): Promise<void> {
   await apiClient.put(`/api/users/${userId}/role`, { role })
 }
+export async function updateUserStatus(userId: string, isActive: boolean): Promise<void> {
+  await apiClient.put(`/api/users/${userId}/status`, { isActive })
+}
