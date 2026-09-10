@@ -5,6 +5,7 @@ import { useOperation } from '../../context/OperationContext'
 import { getActiveBLsByShip } from '../../services/blService'
 import { getShipSummary, getShiftSummary } from '../../services/dashboardService'
 import { createReception } from '../../services/receptionService'
+import { createDispatch } from '../../services/dispatchService'
 import type { BL } from '../../types/bls'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import './OperationsPage.css'
@@ -86,11 +87,20 @@ export function OperationsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSummaryRefreshing, setIsSummaryRefreshing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDispatchSubmitting, setIsDispatchSubmitting] = useState(false)
+  const [dispatchError, setDispatchError] = useState('')
+  const [dispatchSuccessMessage, setDispatchSuccessMessage] = useState('')
   const [error, setError] = useState('')
   const [summaryError, setSummaryError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [form, setForm] = useState({
     terminalTruck: '',
+    blId: '',
+    quantity: '',
+    comment: '',
+  })
+  const [dispatchForm, setDispatchForm] = useState({
+    plate: '',
     blId: '',
     quantity: '',
     comment: '',
@@ -129,6 +139,12 @@ export function OperationsPage() {
         if (activeBLsResult.status === 'fulfilled') {
           setBls(activeBLsResult.value)
           setForm((current) => ({
+            ...current,
+            blId: activeBLsResult.value.some((bl) => bl.id === current.blId)
+              ? current.blId
+              : activeBLsResult.value[0]?.id ?? '',
+          }))
+          setDispatchForm((current) => ({
             ...current,
             blId: activeBLsResult.value.some((bl) => bl.id === current.blId)
               ? current.blId
@@ -235,6 +251,47 @@ export function OperationsPage() {
     }
   }
 
+  async function handleDispatchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!activeShift || !dispatchForm.blId) return
+
+    const quantity = Number(dispatchForm.quantity)
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setDispatchError('La cantidad debe ser un número mayor que cero.')
+      return
+    }
+
+    setIsDispatchSubmitting(true)
+    setDispatchError('')
+    setDispatchSuccessMessage('')
+
+    try {
+      const dispatch = await createDispatch({
+        shiftId: activeShift.id,
+        plate: dispatchForm.plate,
+        comment: dispatchForm.comment || undefined,
+        items: [{
+          blId: dispatchForm.blId,
+          quantity,
+        }],
+      })
+
+      setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}.`)
+      setDispatchForm((current) => ({
+        ...current,
+        plate: '',
+        quantity: '',
+        comment: '',
+      }))
+      await refreshSummaries()
+    } catch (requestError) {
+      setDispatchError(getErrorMessage(requestError))
+    } finally {
+      setIsDispatchSubmitting(false)
+    }
+  }
+
   return (
     <main className="operations-shell">
       <header className="operations-header">
@@ -327,10 +384,65 @@ export function OperationsPage() {
             <span className="eyebrow">Bloque 02</span>
             <h2 id="dispatch-title">Despacho</h2>
           </div>
-          <div className="dispatch-placeholder">
-            <strong>Se implementará en el siguiente bloque</strong>
-            <p>El registro de despacho estará disponible próximamente.</p>
-          </div>
+          {dispatchError ? <p className="operations-message operations-error" role="alert">{dispatchError}</p> : null}
+          {dispatchSuccessMessage ? <p className="operations-message operations-success" role="status">{dispatchSuccessMessage}</p> : null}
+
+          <form className="reception-form" onSubmit={handleDispatchSubmit}>
+            <label className="operations-field">
+              <span>Placa</span>
+              <input
+                type="text"
+                value={dispatchForm.plate}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, plate: event.target.value }))}
+                maxLength={20}
+                required
+              />
+            </label>
+
+            <label className="operations-field">
+              <span>BL</span>
+              <select
+                value={dispatchForm.blId}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, blId: event.target.value }))}
+                required
+                disabled={bls.length === 0}
+              >
+                <option value="">Selecciona un BL</option>
+                {bls.map((bl) => (
+                  <option key={bl.id} value={bl.id}>
+                    {bl.code} · {bl.productName} · declarado {formatQuantity(bl.totalQuantity)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="operations-field">
+              <span>Cantidad</span>
+              <input
+                type="number"
+                value={dispatchForm.quantity}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, quantity: event.target.value }))}
+                min="0.001"
+                step="0.001"
+                required
+              />
+            </label>
+
+            <label className="operations-field">
+              <span>Comentario <small>(opcional)</small></span>
+              <textarea
+                value={dispatchForm.comment}
+                onChange={(event) => setDispatchForm((current) => ({ ...current, comment: event.target.value }))}
+                maxLength={100}
+                rows={3}
+              />
+            </label>
+
+            <button type="submit" className="operations-primary-action" disabled={isDispatchSubmitting || bls.length === 0}>
+              {isDispatchSubmitting ? 'Guardando despacho...' : 'Registrar despacho'}
+            </button>
+            {bls.length === 0 ? <p className="operations-hint">No hay BL activos para esta nave.</p> : null}
+          </form>
         </section>
 
         <section className="operations-column summary-column" aria-labelledby="summary-title">
