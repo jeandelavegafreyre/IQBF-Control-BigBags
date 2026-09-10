@@ -54,4 +54,19 @@ public class UsersController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPut("{userId:guid}/status")]
+    public async Task<IActionResult> UpdateStatus(
+        Guid userId,
+        UpdateUserStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.UpdateStatusAsync(
+            userId,
+            request,
+            User.Identity!.Name!,
+            cancellationToken);
+
+        return NoContent();
+    }
 }
