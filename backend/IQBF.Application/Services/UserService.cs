@@ -52,6 +52,7 @@ public class UserService : IUserService
             if (user.Role != request.Role)
             {
                 user.Role = request.Role;
+                user.SecurityVersion++;
                 user.UpdatedBy = normalizedActorUid;
                 await _db.SaveChangesAsync(cancellationToken);
             }
@@ -90,6 +91,7 @@ public class UserService : IUserService
                 }
 
                 user.IsActive = request.IsActive;
+                user.SecurityVersion++;
                 user.UpdatedBy = normalizedActorUid;
                 await _db.SaveChangesAsync(cancellationToken);
             }
