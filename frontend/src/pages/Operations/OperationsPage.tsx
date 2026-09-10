@@ -6,6 +6,7 @@ import { getActiveBLsByShip } from '../../services/blService'
 import { getShipSummary, getShiftSummary } from '../../services/dashboardService'
 import { createReception } from '../../services/receptionService'
 import { createDispatch } from '../../services/dispatchService'
+import { uploadDispatchPhoto, uploadReceptionPhoto } from '../../services/photoService'
 import type { BL } from '../../types/bls'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import './OperationsPage.css'
@@ -90,6 +91,8 @@ export function OperationsPage() {
   const [isDispatchSubmitting, setIsDispatchSubmitting] = useState(false)
   const [dispatchError, setDispatchError] = useState('')
   const [dispatchSuccessMessage, setDispatchSuccessMessage] = useState('')
+  const [receptionPhotos, setReceptionPhotos] = useState<File[]>([])
+  const [dispatchPhotos, setDispatchPhotos] = useState<File[]>([])
   const [error, setError] = useState('')
   const [summaryError, setSummaryError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -210,6 +213,14 @@ export function OperationsPage() {
     logout()
   }
 
+  function validatePhotos(files: File[]): string {
+    if (files.length > 3) return 'Puedes adjuntar como máximo 3 fotografías.'
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    const invalid = files.find((file) => !allowedTypes.includes(file.type) || file.size > 10 * 1024 * 1024)
+    if (invalid) return 'Las fotografías deben ser JPG, PNG o WEBP y no superar 10 MB cada una.'
+    return ''
+  }
+
   async function handleReceptionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -218,6 +229,12 @@ export function OperationsPage() {
     const quantity = Number(form.quantity)
     if (!Number.isFinite(quantity) || quantity <= 0) {
       setError('La cantidad debe ser un número mayor que cero.')
+      return
+    }
+
+    const photoError = validatePhotos(receptionPhotos)
+    if (photoError) {
+      setError(photoError)
       return
     }
 
@@ -236,13 +253,18 @@ export function OperationsPage() {
         }],
       })
 
-      setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}.`)
+      for (const photo of receptionPhotos) {
+        await uploadReceptionPhoto(reception.id, photo)
+      }
+
+      setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}.${receptionPhotos.length ? ` ${receptionPhotos.length} foto(s) cargada(s).` : ''}`)
       setForm((current) => ({
         ...current,
         terminalTruck: '',
         quantity: '',
         comment: '',
       }))
+      setReceptionPhotos([])
       await refreshSummaries()
     } catch (requestError) {
       setError(getErrorMessage(requestError))
@@ -262,6 +284,12 @@ export function OperationsPage() {
       return
     }
 
+    const photoError = validatePhotos(dispatchPhotos)
+    if (photoError) {
+      setDispatchError(photoError)
+      return
+    }
+
     setIsDispatchSubmitting(true)
     setDispatchError('')
     setDispatchSuccessMessage('')
@@ -277,13 +305,18 @@ export function OperationsPage() {
         }],
       })
 
-      setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}.`)
+      for (const photo of dispatchPhotos) {
+        await uploadDispatchPhoto(dispatch.id, photo)
+      }
+
+      setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}.${dispatchPhotos.length ? ` ${dispatchPhotos.length} foto(s) cargada(s).` : ''}`)
       setDispatchForm((current) => ({
         ...current,
         plate: '',
         quantity: '',
         comment: '',
       }))
+      setDispatchPhotos([])
       await refreshSummaries()
     } catch (requestError) {
       setDispatchError(getErrorMessage(requestError))
@@ -371,6 +404,17 @@ export function OperationsPage() {
                 />
               </label>
 
+              <label className="operations-field">
+                <span>Evidencia fotográfica <small>(opcional · máximo 3)</small></span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(event) => setReceptionPhotos(Array.from(event.target.files ?? []).slice(0, 3))}
+                />
+                {receptionPhotos.length ? <small>{receptionPhotos.length} foto(s) seleccionada(s)</small> : null}
+              </label>
+
               <button type="submit" className="operations-primary-action" disabled={isSubmitting || bls.length === 0}>
                 {isSubmitting ? 'Guardando recepción...' : 'Registrar recepción'}
               </button>
@@ -436,6 +480,17 @@ export function OperationsPage() {
                 maxLength={100}
                 rows={3}
               />
+            </label>
+
+            <label className="operations-field">
+              <span>Evidencia fotográfica <small>(opcional · máximo 3)</small></span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(event) => setDispatchPhotos(Array.from(event.target.files ?? []).slice(0, 3))}
+              />
+              {dispatchPhotos.length ? <small>{dispatchPhotos.length} foto(s) seleccionada(s)</small> : null}
             </label>
 
             <button type="submit" className="operations-primary-action" disabled={isDispatchSubmitting || bls.length === 0}>
