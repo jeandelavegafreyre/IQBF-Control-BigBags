@@ -1,5 +1,4 @@
 using IQBF.Application.DTOs.Auth;
-using IQBF.Application.DTOs.Users;
 using IQBF.API.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +25,7 @@ public class AuthController : ControllerBase
         return Ok(await _authService.LoginAsync(request, cancellationToken));
     }
 
-    [AllowAnonymous]
+    [Authorize(Roles = "Administrator")]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(
         RegisterUserRequest request,
