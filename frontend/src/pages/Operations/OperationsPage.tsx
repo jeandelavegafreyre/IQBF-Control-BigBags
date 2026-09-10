@@ -7,6 +7,7 @@ import { getShipSummary, getShiftSummary } from '../../services/dashboardService
 import { createReception } from '../../services/receptionService'
 import { createDispatch } from '../../services/dispatchService'
 import { uploadDispatchPhoto, uploadReceptionPhoto } from '../../services/photoService'
+import { closeShift } from '../../services/shiftService'
 import type { BL } from '../../types/bls'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import './OperationsPage.css'
@@ -81,7 +82,7 @@ function SummaryMetric({ label, value }: SummaryMetricProps) {
 export function OperationsPage() {
   const navigate = useNavigate()
   const { logout } = useAuth()
-  const { selectedShip, activeShift, clearOperation } = useOperation()
+  const { selectedShip, activeShift, clearActiveShift, clearOperation } = useOperation()
   const [bls, setBls] = useState<BL[]>([])
   const [shipSummary, setShipSummary] = useState<ShipSummary | null>(null)
   const [summary, setSummary] = useState<ShiftSummary | null>(null)
@@ -93,6 +94,8 @@ export function OperationsPage() {
   const [dispatchSuccessMessage, setDispatchSuccessMessage] = useState('')
   const [receptionPhotos, setReceptionPhotos] = useState<File[]>([])
   const [dispatchPhotos, setDispatchPhotos] = useState<File[]>([])
+  const [isClosingShift, setIsClosingShift] = useState(false)
+  const [closeShiftError, setCloseShiftError] = useState('')
   const [error, setError] = useState('')
   const [summaryError, setSummaryError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -211,6 +214,28 @@ export function OperationsPage() {
   function handleLogout() {
     clearOperation()
     logout()
+  }
+
+  async function handleCloseShift() {
+    if (!activeShift || isClosingShift) return
+
+    const confirmed = window.confirm(
+      '¿Cerrar el turno actual? Después del cierre no se podrán registrar más recepciones ni despachos en este turno.',
+    )
+    if (!confirmed) return
+
+    setIsClosingShift(true)
+    setCloseShiftError('')
+
+    try {
+      await closeShift(activeShift.id)
+      clearActiveShift()
+      navigate('/shift', { replace: true })
+    } catch (requestError) {
+      setCloseShiftError(getErrorMessage(requestError))
+    } finally {
+      setIsClosingShift(false)
+    }
   }
 
   function validatePhotos(files: File[]): string {
@@ -365,10 +390,22 @@ export function OperationsPage() {
             {selectedShip?.name} · {activeShift ? getShiftTypeLabel(activeShift.shiftType) : 'Sin turno'}
           </p>
         </div>
-        <button type="button" className="secondary-action" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
+        <div className="operations-header-actions">
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={handleCloseShift}
+            disabled={isClosingShift || isSubmitting || isDispatchSubmitting}
+          >
+            {isClosingShift ? 'Cerrando turno...' : 'Cerrar turno'}
+          </button>
+          <button type="button" className="secondary-action" onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
       </header>
+
+      {closeShiftError ? <p className="operations-message operations-error" role="alert">{closeShiftError}</p> : null}
 
       <div className="operations-grid">
         <section className="operations-column" aria-labelledby="reception-title">
