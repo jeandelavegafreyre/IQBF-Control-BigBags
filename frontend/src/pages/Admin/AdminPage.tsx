@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../../context/AuthContext'
 import { getActiveShips } from '../../services/shipService'
+import { getActiveBLsByShip } from '../../services/blService'
 import { createBL, createProduct, createShip, getProducts, getUsers, updateUserRole } from '../../services/adminService'
 import type { Ship } from '../../types/ships'
+import type { BL } from '../../types/bls'
 import type { Product, UserSummary } from '../../types/admin'
 import './AdminPage.css'
 
@@ -29,17 +31,25 @@ export function AdminPage() {
   const [ships, setShips] = useState<Ship[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [users, setUsers] = useState<UserSummary[]>([])
+  const [bls, setBLs] = useState<BL[]>([])
   const [shipName, setShipName] = useState('')
   const [productName, setProductName] = useState('')
   const [bl, setBL] = useState({ code: '', totalQuantity: '', shipId: '', productId: '' })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  async function loadBLs(shipId: string) {
+    if (!shipId) { setBLs([]); return }
+    try { setBLs(await getActiveBLsByShip(shipId)) } catch (e) { setError(errorMessage(e)); setBLs([]) }
+  }
+
   async function load() {
     try {
       const [shipData, productData, userData] = await Promise.all([getActiveShips(), getProducts(), getUsers()])
       setShips(shipData); setProducts(productData); setUsers(userData)
-      setBL(current => ({ ...current, shipId: current.shipId || shipData[0]?.id || '', productId: current.productId || productData[0]?.id || '' }))
+      const selectedShipId = bl.shipId || shipData[0]?.id || ''
+      setBL(current => ({ ...current, shipId: current.shipId || selectedShipId, productId: current.productId || productData[0]?.id || '' }))
+      await loadBLs(selectedShipId)
     } catch (e) { setError(errorMessage(e)) }
   }
   useEffect(() => { void load() }, [])
@@ -54,31 +64,45 @@ export function AdminPage() {
   }
   async function submitBL(e: FormEvent) {
     e.preventDefault(); setError(''); setMessage('')
-    const quantity=Number(bl.totalQuantity)
+    const quantity = Number(bl.totalQuantity)
     if (!Number.isFinite(quantity) || quantity < 0) { setError('La cantidad declarada debe ser un número válido mayor o igual a cero.'); return }
-    try { await createBL(bl.code, quantity, bl.shipId, bl.productId); setBL(c=>({...c,code:'',totalQuantity:''})); setMessage('BL creado correctamente.') } catch (x) { setError(errorMessage(x)) }
+    try {
+      await createBL(bl.code, quantity, bl.shipId, bl.productId)
+      setBL(c => ({ ...c, code: '', totalQuantity: '' }))
+      setMessage('BL creado correctamente.')
+      await loadBLs(bl.shipId)
+    } catch (x) { setError(errorMessage(x)) }
   }
   async function changeRole(item: UserSummary, role: number) {
     setError(''); setMessage('')
     try { await updateUserRole(item.id, role); setMessage(`Rol de ${item.uid} actualizado.`); await load() } catch (x) { setError(errorMessage(x)) }
   }
+  function changeBLShip(shipId: string) {
+    setBL(c => ({ ...c, shipId }))
+    setError('')
+    void loadBLs(shipId)
+  }
 
-  if (user?.role !== 'Administrator') return <main className="admin-shell"><p>Acceso exclusivo para Administradores.</p><button onClick={()=>navigate('/ships')}>Volver</button></main>
+  if (user?.role !== 'Administrator') return <main className="admin-shell"><p>Acceso exclusivo para Administradores.</p><button onClick={() => navigate('/ships')}>Volver</button></main>
 
   return <main className="admin-shell">
-    <header className="admin-header"><div><span className="eyebrow">IQBF Control</span><h1>Administración</h1></div><button className="secondary-action" onClick={()=>navigate('/ships')}>Volver a operación</button></header>
+    <header className="admin-header"><div><span className="eyebrow">IQBF Control</span><h1>Administración</h1></div><button className="secondary-action" onClick={() => navigate('/ships')}>Volver a operación</button></header>
     {error ? <p className="operations-message operations-error">{error}</p> : null}
     {message ? <p className="operations-message operations-success">{message}</p> : null}
     <div className="admin-grid">
-      <section className="admin-card"><h2>Naves</h2><form onSubmit={submitShip}><label>Nombre<input value={shipName} onChange={e=>setShipName(e.target.value)} required /></label><button type="submit">Crear nave</button></form><p>{ships.length} nave(s) activa(s)</p></section>
-      <section className="admin-card"><h2>Productos</h2><form onSubmit={submitProduct}><label>Nombre<input value={productName} onChange={e=>setProductName(e.target.value)} required /></label><button type="submit">Crear producto</button></form><ul>{products.map(p=><li key={p.id}>{p.name}</li>)}</ul></section>
-      <section className="admin-card"><h2>BL</h2><form onSubmit={submitBL}>
-        <label>Código<input value={bl.code} onChange={e=>setBL(c=>({...c,code:e.target.value}))} required /></label>
-        <label>Cantidad declarada<input type="number" min="0" step="0.001" value={bl.totalQuantity} onChange={e=>setBL(c=>({...c,totalQuantity:e.target.value}))} required /></label>
-        <label>Nave<select value={bl.shipId} onChange={e=>setBL(c=>({...c,shipId:e.target.value}))} required>{ships.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-        <label>Producto<select value={bl.productId} onChange={e=>setBL(c=>({...c,productId:e.target.value}))} required>{products.filter(p=>p.isActive).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-        <button type="submit">Crear BL</button></form></section>
-      <section className="admin-card admin-users"><h2>Usuarios</h2>{users.map(u=><div className="admin-user" key={u.id}><span><strong>{u.uid}</strong> · {u.fullName}</span><select aria-label={`Rol de ${u.uid}`} value={roleValue(u.role)} onChange={e=>void changeRole(u,Number(e.target.value))}><option value={1}>Administrator</option><option value={2}>Yard</option><option value={3}>User</option></select><small>{roleName(u.role)} · {u.isActive?'Activo':'Inactivo'}</small></div>)}</section>
+      <section className="admin-card"><h2>Naves</h2><form onSubmit={submitShip}><label>Nombre<input value={shipName} onChange={e => setShipName(e.target.value)} required /></label><button type="submit">Crear nave</button></form><p>{ships.length} nave(s) activa(s)</p></section>
+      <section className="admin-card"><h2>Productos</h2><form onSubmit={submitProduct}><label>Nombre<input value={productName} onChange={e => setProductName(e.target.value)} required /></label><button type="submit">Crear producto</button></form><ul>{products.map(p => <li key={p.id}>{p.name}</li>)}</ul></section>
+      <section className="admin-card admin-bl"><h2>BL</h2><form onSubmit={submitBL}>
+        <label>Código<input value={bl.code} onChange={e => setBL(c => ({ ...c, code: e.target.value }))} required /></label>
+        <label>Cantidad declarada<input type="number" min="0" step="0.001" value={bl.totalQuantity} onChange={e => setBL(c => ({ ...c, totalQuantity: e.target.value }))} required /></label>
+        <label>Nave<select value={bl.shipId} onChange={e => changeBLShip(e.target.value)} required>{ships.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label>Producto<select value={bl.productId} onChange={e => setBL(c => ({ ...c, productId: e.target.value }))} required>{products.filter(p => p.isActive).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <button type="submit">Crear BL</button></form>
+        <div className="admin-bl-list"><h3>BL registrados en la nave</h3>
+          {bls.length === 0 ? <p>No hay BL registrados para esta nave.</p> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Código</th><th>Producto</th><th>Cantidad declarada</th><th>Estado</th></tr></thead><tbody>{bls.map(item => <tr key={item.id}><td><strong>{item.code}</strong></td><td>{item.productName}</td><td>{item.totalQuantity.toLocaleString('es-PE', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td><td>{item.isActive ? 'Activo' : 'Inactivo'}</td></tr>)}</tbody></table></div>}
+        </div>
+      </section>
+      <section className="admin-card admin-users"><h2>Usuarios</h2>{users.map(u => <div className="admin-user" key={u.id}><span><strong>{u.uid}</strong> · {u.fullName}</span><select aria-label={`Rol de ${u.uid}`} value={roleValue(u.role)} onChange={e => void changeRole(u, Number(e.target.value))}><option value={1}>Administrator</option><option value={2}>Yard</option><option value={3}>User</option></select><small>{roleName(u.role)} · {u.isActive ? 'Activo' : 'Inactivo'}</small></div>)}</section>
     </div>
   </main>
 }
