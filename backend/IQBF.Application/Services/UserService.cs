@@ -11,7 +11,13 @@ namespace IQBF.Application.Services;
 public class UserService : IUserService
 {
     private readonly IQBFDbContext _db;
-    public UserService(IQBFDbContext db) => _db = db;
+    private readonly IUserSessionRevoker _sessionRevoker;
+
+    public UserService(IQBFDbContext db, IUserSessionRevoker sessionRevoker)
+    {
+        _db = db;
+        _sessionRevoker = sessionRevoker;
+    }
 
     public Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Login pendiente: falta integrar hashing de contraseñas y JWT.");
@@ -26,6 +32,7 @@ public class UserService : IUserService
 
         var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
         var strategy = _db.Database.CreateExecutionStrategy();
+        var changed = false;
 
         await strategy.ExecuteAsync(async () =>
         {
@@ -49,7 +56,8 @@ public class UserService : IUserService
                     throw new InvalidOperationException("No se puede cambiar el rol del último Administrador activo.");
             }
 
-            if (user.Role != request.Role)
+            changed = user.Role != request.Role;
+            if (changed)
             {
                 user.Role = request.Role;
                 user.SecurityVersion++;
@@ -59,12 +67,16 @@ public class UserService : IUserService
 
             await transaction.CommitAsync(cancellationToken);
         });
+
+        if (changed)
+            _sessionRevoker.Revoke(userId);
     }
 
     public async Task UpdateStatusAsync(Guid userId, UpdateUserStatusRequest request, string actorUid, CancellationToken cancellationToken = default)
     {
         var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
         var strategy = _db.Database.CreateExecutionStrategy();
+        var changed = false;
 
         await strategy.ExecuteAsync(async () =>
         {
@@ -75,7 +87,8 @@ public class UserService : IUserService
             var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
                 ?? throw new KeyNotFoundException("Usuario no encontrado.");
 
-            if (user.IsActive != request.IsActive)
+            changed = user.IsActive != request.IsActive;
+            if (changed)
             {
                 if (user.UID == normalizedActorUid && !request.IsActive)
                     throw new InvalidOperationException("No puedes desactivar tu propia cuenta durante una sesión activa.");
@@ -98,5 +111,8 @@ public class UserService : IUserService
 
             await transaction.CommitAsync(cancellationToken);
         });
+
+        if (changed)
+            _sessionRevoker.Revoke(userId);
     }
 }
