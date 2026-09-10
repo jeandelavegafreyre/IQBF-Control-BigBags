@@ -20,6 +20,10 @@ function photoUrl(path: string): string {
   return `${apiUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
+function movementLabel(movement: OperationalMovement): string {
+  return movement.movementType === 'Reception' ? 'Recepción' : 'Despacho'
+}
+
 export function HistoryPage() {
   const navigate = useNavigate()
   const { selectedShip, activeShift } = useOperation()
@@ -88,9 +92,9 @@ export function HistoryPage() {
             <div className="history-card-heading">
               <div>
                 <span className={`history-kind ${movement.movementType === 'Reception' ? 'reception' : 'dispatch'}`}>
-                  {movement.movementType === 'Reception' ? 'Recepción' : 'Despacho'}
+                  {movementLabel(movement)}
                 </span>
-                <h2>Transacción #{movement.transactionNumber}</h2>
+                <h2>{movementLabel(movement)} #{movement.transactionNumber}</h2>
               </div>
               <time dateTime={movement.createdAt}>{formatDateTime(movement.createdAt)}</time>
             </div>
@@ -114,7 +118,7 @@ export function HistoryPage() {
               <div className="history-photos">
                 {movement.photos.map((photo) => (
                   <a key={photo.id} href={photoUrl(photo.photoUrl)} target="_blank" rel="noreferrer" title={photo.fileName ?? 'Evidencia fotográfica'}>
-                    <img src={photoUrl(photo.photoUrl)} alt={`Evidencia de transacción ${movement.transactionNumber}`} loading="lazy" />
+                    <img src={photoUrl(photo.photoUrl)} alt={`Evidencia de ${movementLabel(movement).toLowerCase()} ${movement.transactionNumber}`} loading="lazy" />
                   </a>
                 ))}
               </div>
