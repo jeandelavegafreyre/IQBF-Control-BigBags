@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext'
 import { useOperation } from './context/OperationContext'
 import { LoginPage } from './pages/Login/LoginPage'
 import { OperationsPage } from './pages/Operations/OperationsPage'
+import { AdminPage } from './pages/Admin/AdminPage'
 import { ShiftStartPage } from './pages/Shift/ShiftStartPage'
 import { getActiveShips } from './services/shipService'
 import type { Ship } from './types/ships'
@@ -57,9 +58,12 @@ function ShipsPage() {
           <span className="eyebrow">IQBF Control</span>
           <h1 id="app-title">Selecciona una nave</h1>
         </div>
-        <button type="button" className="secondary-action" onClick={handleLogout}>
-          Cerrar sesión
-        </button>
+        <div className="operations-header-actions">
+          {user?.role === 'Administrator' ? <button type="button" className="secondary-action" onClick={() => navigate('/admin')}>Administración</button> : null}
+          <button type="button" className="secondary-action" onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
       </header>
 
       <section className="ship-selection" aria-labelledby="ship-selection-title">
@@ -146,6 +150,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ShiftRoute />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPage />
           </ProtectedRoute>
         }
       />
