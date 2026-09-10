@@ -174,6 +174,7 @@ namespace IQBF.Infrastructure.Migrations
                     b.Property<string>("LastName").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
                     b.Property<string>("PasswordHash").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
                     b.Property<int>("Role").HasColumnType("int");
+                    b.Property<int>("SecurityVersion").ValueGeneratedOnAdd().HasColumnType("int").HasDefaultValue(1);
                     b.Property<string>("UID").IsRequired().HasMaxLength(50).HasColumnType("nvarchar(50)");
                     b.Property<DateTime?>("UpdatedAt").HasColumnType("datetime2");
                     b.Property<string>("UpdatedBy").HasMaxLength(50).HasColumnType("nvarchar(50)");
