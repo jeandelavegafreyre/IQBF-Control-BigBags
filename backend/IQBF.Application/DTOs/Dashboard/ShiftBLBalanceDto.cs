@@ -4,7 +4,7 @@ public record ShiftBLBalanceDto(
     Guid BLId,
     string BLCode,
     string ProductName,
-    decimal ReceivedQuantity,
-    decimal DispatchedQuantity,
-    decimal NetQuantity
+    int ReceivedQuantity,
+    int DispatchedQuantity,
+    int NetQuantity
 );
