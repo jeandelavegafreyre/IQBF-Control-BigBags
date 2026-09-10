@@ -1,9 +1,13 @@
+using IQBF.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace IQBF.Infrastructure.Migrations
 {
+    [DbContext(typeof(IQBFDbContext))]
+    [Migration("20260910120000_UseWholeBigBagQuantities")]
     public partial class UseWholeBigBagQuantities : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,7 +20,6 @@ IF EXISTS (SELECT 1 FROM ReceptionItems WHERE Quantity <> FLOOR(Quantity))
 IF EXISTS (SELECT 1 FROM DispatchItems WHERE Quantity <> FLOOR(Quantity))
     THROW 50003, 'Existen despachos con cantidades fraccionarias. Corrija los datos antes de aplicar la migración.', 1;
 ");
-
             migrationBuilder.AlterColumn<int>(name: "TotalQuantity", table: "BLs", type: "int", nullable: false, oldClrType: typeof(decimal), oldType: "decimal(18,3)", oldPrecision: 18, oldScale: 3);
             migrationBuilder.AlterColumn<int>(name: "Quantity", table: "ReceptionItems", type: "int", nullable: false, oldClrType: typeof(decimal), oldType: "decimal(18,3)", oldPrecision: 18, oldScale: 3);
             migrationBuilder.AlterColumn<int>(name: "Quantity", table: "DispatchItems", type: "int", nullable: false, oldClrType: typeof(decimal), oldType: "decimal(18,3)", oldPrecision: 18, oldScale: 3);
