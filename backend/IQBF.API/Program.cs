@@ -14,31 +14,17 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -----------------------------
-// Configuration validation
-// -----------------------------
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? "IQBF-DESIGN-TIME-KEY-ONLY-NOT-FOR-PRODUCTION-123456789";
 
-// -----------------------------
-// Application layers
-// -----------------------------
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// -----------------------------
-// API services
-// -----------------------------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
-
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// -----------------------------
-// CORS
-// -----------------------------
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? Array.Empty<string>();
@@ -62,9 +48,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// -----------------------------
-// JWT Authentication
-// -----------------------------
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
 
@@ -80,25 +63,18 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,
             ValidAudience = audience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
 
-        // Permite SignalR con JWT enviado por query string.
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/operations"))
-                {
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/operations"))
                     context.Token = accessToken;
-                }
-
                 return Task.CompletedTask;
             }
         };
@@ -106,9 +82,6 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// -----------------------------
-// Swagger
-// -----------------------------
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -117,7 +90,6 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "API empresarial para Control IQBF - Recepción vs Despacho - Big Bags."
     });
-
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -127,17 +99,12 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Ingrese el token JWT."
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -146,9 +113,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// -----------------------------
-// Middleware pipeline
-// -----------------------------
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -158,48 +122,25 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseCors("Frontend");
 
-// -----------------------------
-// Photo static files
-// -----------------------------
-// Debe coincidir con la ubicación utilizada por
-// LocalPhotoStorageService.
-var photoStoragePath = Path.Combine(
-    AppContext.BaseDirectory,
-    "storage",
-    "photos");
-
-// Garantiza que la carpeta exista aunque todavía
-// no se hayan cargado fotografías.
+var photoStoragePath = Path.Combine(AppContext.BaseDirectory, "storage", "photos");
 Directory.CreateDirectory(photoStoragePath);
-
-// Expone:
-// storage/photos/...  ->  /photos/...
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(photoStoragePath),
     RequestPath = "/photos"
 });
 
-// -----------------------------
-// Authentication / Authorization
-// -----------------------------
 app.UseAuthentication();
+// Revalida contra la base de datos cada JWT autenticado. Esto hace que una
+// desactivación o cambio de rol invalide inmediatamente las sesiones antiguas.
+app.UseMiddleware<ActiveUserMiddleware>();
 app.UseAuthorization();
 
-// -----------------------------
-// API endpoints
-// -----------------------------
 app.MapControllers();
 app.MapHub<OperationsHub>("/hubs/operations");
 
-// -----------------------------
-// Initial seed
-// -----------------------------
-// Seed seguro opcional.
-// Solo crea Admin si UID + Password fueron configurados explícitamente.
 await AdminSeeder.SeedAsync(app.Services, app.Configuration);
 
 app.Run();
