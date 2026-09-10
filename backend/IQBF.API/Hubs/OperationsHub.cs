@@ -21,7 +21,8 @@ public class OperationsHub : Hub
 
     public async Task JoinShift(Guid shiftId)
     {
-        await ValidateSessionAsync();
+        if (!await IsCurrentSessionValidAsync())
+            throw new HubException("La sesión cambió o dejó de ser válida.");
 
         var shiftIsOpen = await _db.Shifts
             .AsNoTracking()
@@ -38,9 +39,9 @@ public class OperationsHub : Hub
             Context.ConnectionAborted);
     }
 
-    public Task ValidateSession() => ValidateSessionAsync();
+    public Task<bool> ValidateSession() => IsCurrentSessionValidAsync();
 
-    private async Task ValidateSessionAsync()
+    private async Task<bool> IsCurrentSessionValidAsync()
     {
         var userIdValue = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         var roleValue = Context.User?.FindFirstValue(ClaimTypes.Role);
@@ -48,10 +49,7 @@ public class OperationsHub : Hub
 
         if (!Guid.TryParse(userIdValue, out var userId) ||
             !int.TryParse(securityVersionValue, out var tokenSecurityVersion))
-        {
-            Context.Abort();
-            throw new HubException("La sesión no es válida.");
-        }
+            return false;
 
         var user = await _db.Users
             .AsNoTracking()
@@ -59,14 +57,10 @@ public class OperationsHub : Hub
             .Select(x => new { x.IsActive, x.Role, x.SecurityVersion })
             .FirstOrDefaultAsync(Context.ConnectionAborted);
 
-        if (user is null ||
-            !user.IsActive ||
-            user.SecurityVersion != tokenSecurityVersion ||
-            !string.Equals(roleValue, user.Role.ToString(), StringComparison.Ordinal) ||
-            (user.Role != UserRole.Administrator && user.Role != UserRole.Yard))
-        {
-            Context.Abort();
-            throw new HubException("La sesión cambió o dejó de ser válida.");
-        }
+        return user is not null &&
+               user.IsActive &&
+               user.SecurityVersion == tokenSecurityVersion &&
+               string.Equals(roleValue, user.Role.ToString(), StringComparison.Ordinal) &&
+               (user.Role == UserRole.Administrator || user.Role == UserRole.Yard);
     }
 }
