@@ -70,7 +70,7 @@ public class AuthService : IAuthService
         user.SecurityVersion++;
         user.UpdatedBy = Normalize(actorUid);
         await _db.SaveChangesAsync(cancellationToken);
-        _sessionRevoker.Revoke(userId);
+        await _sessionRevoker.RevokeAsync(userId, cancellationToken);
     }
 
     private AuthResponse CreateResponse(User user)
