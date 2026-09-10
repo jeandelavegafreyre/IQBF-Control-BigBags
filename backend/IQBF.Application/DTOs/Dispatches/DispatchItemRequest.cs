@@ -1,2 +1,2 @@
 namespace IQBF.Application.DTOs.Dispatches;
-public sealed record DispatchItemRequest(Guid BLId, decimal Quantity);
+public sealed record DispatchItemRequest(Guid BLId, int Quantity);
