@@ -7,4 +7,5 @@ public interface IAuthService
 {
     Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
     Task<AuthResponse> RegisterAsync(RegisterUserRequest request, CancellationToken cancellationToken = default);
+    Task ResetPasswordAsync(Guid userId, ResetUserPasswordRequest request, string actorUid, CancellationToken cancellationToken = default);
 }
