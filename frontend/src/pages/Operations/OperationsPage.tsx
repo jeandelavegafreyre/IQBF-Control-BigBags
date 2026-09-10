@@ -253,11 +253,19 @@ export function OperationsPage() {
         }],
       })
 
+      let uploadedPhotos = 0
+      let photoUploadError = ''
+
       for (const photo of receptionPhotos) {
-        await uploadReceptionPhoto(reception.id, photo)
+        try {
+          await uploadReceptionPhoto(reception.id, photo)
+          uploadedPhotos += 1
+        } catch (requestError) {
+          photoUploadError = getErrorMessage(requestError)
+          break
+        }
       }
 
-      setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}.${receptionPhotos.length ? ` ${receptionPhotos.length} foto(s) cargada(s).` : ''}`)
       setForm((current) => ({
         ...current,
         terminalTruck: '',
@@ -266,6 +274,13 @@ export function OperationsPage() {
       }))
       setReceptionPhotos([])
       await refreshSummaries()
+
+      if (photoUploadError) {
+        setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}. No vuelva a registrar la recepción.`)
+        setError(`La recepción quedó guardada, pero falló la evidencia fotográfica después de cargar ${uploadedPhotos} de ${receptionPhotos.length} foto(s): ${photoUploadError}`)
+      } else {
+        setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}.${uploadedPhotos ? ` ${uploadedPhotos} foto(s) cargada(s).` : ''}`)
+      }
     } catch (requestError) {
       setError(getErrorMessage(requestError))
     } finally {
@@ -305,11 +320,19 @@ export function OperationsPage() {
         }],
       })
 
+      let uploadedPhotos = 0
+      let photoUploadError = ''
+
       for (const photo of dispatchPhotos) {
-        await uploadDispatchPhoto(dispatch.id, photo)
+        try {
+          await uploadDispatchPhoto(dispatch.id, photo)
+          uploadedPhotos += 1
+        } catch (requestError) {
+          photoUploadError = getErrorMessage(requestError)
+          break
+        }
       }
 
-      setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}.${dispatchPhotos.length ? ` ${dispatchPhotos.length} foto(s) cargada(s).` : ''}`)
       setDispatchForm((current) => ({
         ...current,
         plate: '',
@@ -318,6 +341,13 @@ export function OperationsPage() {
       }))
       setDispatchPhotos([])
       await refreshSummaries()
+
+      if (photoUploadError) {
+        setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}. No vuelva a registrar el despacho.`)
+        setDispatchError(`El despacho quedó guardado, pero falló la evidencia fotográfica después de cargar ${uploadedPhotos} de ${dispatchPhotos.length} foto(s): ${photoUploadError}`)
+      } else {
+        setDispatchSuccessMessage(`Despacho registrado correctamente. Transacción #${dispatch.transactionNumber}.${uploadedPhotos ? ` ${uploadedPhotos} foto(s) cargada(s).` : ''}`)
+      }
     } catch (requestError) {
       setDispatchError(getErrorMessage(requestError))
     } finally {
