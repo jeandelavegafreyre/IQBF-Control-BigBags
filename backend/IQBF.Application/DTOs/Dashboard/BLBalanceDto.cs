@@ -4,11 +4,11 @@ public record BLBalanceDto(
     Guid Id,
     string Code,
     string ProductName,
-    decimal TotalQuantity,
-    decimal ReceivedQuantity,
-    decimal DispatchedQuantity,
-    decimal AvailableQuantity,
-    decimal PendingReception,
+    int TotalQuantity,
+    int ReceivedQuantity,
+    int DispatchedQuantity,
+    int AvailableQuantity,
+    int PendingReception,
     decimal ReceptionProgress,
     decimal DispatchProgress
 );
