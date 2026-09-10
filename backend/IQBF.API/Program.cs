@@ -1,5 +1,6 @@
 using System.Text;
 using IQBF.Application;
+using IQBF.Application.Interfaces;
 using IQBF.API.Hubs;
 using IQBF.API.Middleware;
 using IQBF.API.Security;
@@ -22,6 +23,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<OperationsConnectionRegistry>();
+builder.Services.AddSingleton<IUserSessionRevoker>(serviceProvider =>
+    serviceProvider.GetRequiredService<OperationsConnectionRegistry>());
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
