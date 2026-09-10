@@ -26,8 +26,6 @@ public class UserService : IUserService
 
         var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
 
-        // SERIALIZABLE evita que dos cambios concurrentes de Administradores
-        // puedan superar simultáneamente la validación del "último Administrador".
         await using var transaction = await _db.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
             cancellationToken);
@@ -55,6 +53,42 @@ public class UserService : IUserService
         }
 
         user.Role = request.Role;
+        user.UpdatedBy = normalizedActorUid;
+        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task UpdateStatusAsync(Guid userId, UpdateUserStatusRequest request, string actorUid, CancellationToken cancellationToken = default)
+    {
+        var normalizedActorUid = (actorUid ?? string.Empty).Trim().ToUpperInvariant();
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
+            ?? throw new KeyNotFoundException("Usuario no encontrado.");
+
+        if (user.IsActive == request.IsActive)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        if (user.UID == normalizedActorUid && !request.IsActive)
+            throw new InvalidOperationException("No puedes desactivar tu propia cuenta durante una sesión activa.");
+
+        if (user.Role == UserRole.Administrator && user.IsActive && !request.IsActive)
+        {
+            var activeAdministratorCount = await _db.Users.CountAsync(
+                x => x.IsActive && x.Role == UserRole.Administrator,
+                cancellationToken);
+
+            if (activeAdministratorCount <= 1)
+                throw new InvalidOperationException("No se puede desactivar al último Administrador activo.");
+        }
+
+        user.IsActive = request.IsActive;
         user.UpdatedBy = normalizedActorUid;
         await _db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
