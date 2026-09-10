@@ -47,7 +47,7 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8) throw new ArgumentException("La contraseña debe tener al menos 8 caracteres.");
         if (!Enum.IsDefined(typeof(UserRole), request.Role)) throw new ArgumentException("Rol de usuario no válido.");
         if (await _db.Users.AnyAsync(x => x.UID == uid, cancellationToken)) throw new InvalidOperationException("El UID ya está registrado.");
-        var user = new User { UID = uid, FirstName = firstName, LastName = lastName, Role = request.Role, IsActive = true, CreatedBy = uid };
+        var user = new User { UID = uid, FirstName = firstName, LastName = lastName, Role = request.Role, IsActive = true, SecurityVersion = 1, CreatedBy = uid };
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
         _db.Users.Add(user); await _db.SaveChangesAsync(cancellationToken);
         return CreateResponse(user);
@@ -60,6 +60,7 @@ public class AuthService : IAuthService
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
             ?? throw new KeyNotFoundException("Usuario no encontrado.");
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+        user.SecurityVersion++;
         user.UpdatedBy = Normalize(actorUid);
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -76,7 +77,8 @@ public class AuthService : IAuthService
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.UID),
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role.ToString()),
             new System.Security.Claims.Claim("uid", user.UID),
-            new System.Security.Claims.Claim("full_name", user.FullName)
+            new System.Security.Claims.Claim("full_name", user.FullName),
+            new System.Security.Claims.Claim("security_version", user.SecurityVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))
         };
         var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(key)), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
         var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(issuer: issuer, audience: audience, claims: claims, expires: expiresAt, signingCredentials: credentials);
