@@ -20,6 +20,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(x => x.Role).HasConversion<int>().IsRequired();
         builder.Property(x => x.IsActive).HasDefaultValue(true);
+        builder.Property(x => x.SecurityVersion).HasDefaultValue(1).IsRequired();
 
         builder.Ignore(x => x.FullName);
 
