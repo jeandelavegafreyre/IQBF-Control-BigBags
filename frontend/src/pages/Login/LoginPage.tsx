@@ -9,7 +9,16 @@ export function LoginPage() {
   const [uid, setUid] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [sessionMessage, setSessionMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    const message = sessionStorage.getItem('sessionMessage')
+    if (message) {
+      setSessionMessage(message)
+      sessionStorage.removeItem('sessionMessage')
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -20,6 +29,7 @@ export function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
+    setSessionMessage('')
 
     const trimmedUid = uid.trim()
 
@@ -88,6 +98,7 @@ export function LoginPage() {
               />
             </label>
 
+            {sessionMessage ? <div className="login-error">{sessionMessage}</div> : null}
             {error ? <div className="login-error">{error}</div> : null}
 
             <button type="submit" className="login-button" disabled={isSubmitting}>
