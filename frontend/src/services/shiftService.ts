@@ -14,3 +14,7 @@ export async function startShift(request: StartShiftRequest): Promise<Shift> {
   const response = await apiClient.post<Shift>('/api/shifts/start', request)
   return response.data
 }
+
+export async function closeShift(shiftId: string): Promise<void> {
+  await apiClient.post(`/api/shifts/${shiftId}/close`)
+}
