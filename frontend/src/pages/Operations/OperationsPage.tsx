@@ -43,7 +43,7 @@ function getShiftTypeLabel(shiftType: number): string { return shiftType === 1 ?
 
 export function OperationsPage() {
   const navigate = useNavigate()
-  const { logout, token } = useAuth()
+  const { user, logout, token } = useAuth()
   const { selectedShip, activeShift, clearOperation } = useOperation()
   const [bls, setBls] = useState<BL[]>([])
   const [shipSummary, setShipSummary] = useState<ShipSummary | null>(null)
@@ -64,6 +64,7 @@ export function OperationsPage() {
   const [dispatchForm, setDispatchForm] = useState({ plate: '', blId: '', quantity: '', comment: '' })
 
   const receptionTotal = receptionLines.reduce((total, line) => total + (Number(line.quantity) || 0), 0)
+  const canChangeOperation = user?.role === 'Administrator' || user?.role === 'Yard'
 
   useEffect(() => {
     if (!selectedShip) { navigate('/ships', { replace: true }); return }
@@ -108,6 +109,12 @@ export function OperationsPage() {
     if (shipSummaryResult.status === 'rejected') summaryErrors.push(`Acumulado de nave: ${getErrorMessage(shipSummaryResult.reason)}`)
     if (shiftSummaryResult.status === 'rejected') summaryErrors.push(`Turno actual: ${getErrorMessage(shiftSummaryResult.reason)}`)
     setSummaryError(summaryErrors.join(' ')); setIsSummaryRefreshing(false)
+  }
+
+  function handleChangeOperation() {
+    if (!canChangeOperation || isSubmitting || isDispatchSubmitting) return
+    clearOperation()
+    navigate('/ships')
   }
 
   function handleLogout() { clearOperation(); logout() }
@@ -166,7 +173,18 @@ export function OperationsPage() {
 
   return (
     <main className="operations-shell">
-      <header className="operations-header"><div><span className="eyebrow">IQBF Control</span><h1>Operación en curso</h1><p className="operations-context">{selectedShip?.name} · {activeShift ? getShiftTypeLabel(activeShift.shiftType) : 'Sin turno'}</p></div><div className="operations-header-actions"><button type="button" className="secondary-action" onClick={() => navigate('/history')} disabled={isSubmitting || isDispatchSubmitting}>Historial operativo</button><button type="button" className="secondary-action" onClick={handleLogout}>Cerrar sesión</button></div></header>
+      <header className="operations-header">
+        <div>
+          <span className="eyebrow">IQBF Control</span>
+          <h1>Operación en curso</h1>
+          <p className="operations-context">{selectedShip?.name} · {activeShift ? getShiftTypeLabel(activeShift.shiftType) : 'Sin turno'}</p>
+        </div>
+        <div className="operations-header-actions">
+          {canChangeOperation ? <button type="button" className="secondary-action" onClick={handleChangeOperation} disabled={isSubmitting || isDispatchSubmitting}>Cambiar nave / turno</button> : null}
+          <button type="button" className="secondary-action" onClick={() => navigate('/history')} disabled={isSubmitting || isDispatchSubmitting}>Historial operativo</button>
+          <button type="button" className="secondary-action" onClick={handleLogout}>Cerrar sesión</button>
+        </div>
+      </header>
       <div className="operations-grid">
         <section className="operations-column" aria-labelledby="reception-title"><div className="operations-column-heading"><span className="eyebrow">Bloque 01</span><h2 id="reception-title">Recepción</h2></div>
           {isLoading ? <p className="operations-message">Cargando BL y resumen...</p> : null}{error ? <p className="operations-message operations-error" role="alert">{error}</p> : null}{successMessage ? <p className="operations-message operations-success" role="status">{successMessage}</p> : null}
