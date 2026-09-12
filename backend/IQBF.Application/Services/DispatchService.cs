@@ -95,7 +95,6 @@ public class DispatchService : IDispatchService
                 cancellationToken);
 
             var entity = await _db.Dispatches
-                .Include(x => x.Items)
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
                 ?? throw new KeyNotFoundException("Despacho no encontrado.");
 
@@ -106,14 +105,20 @@ public class DispatchService : IDispatchService
             var bls = await GetValidBLsAsync(ids, shift.ShipId, cancellationToken);
             await ValidateDispatchQuantitiesAsync(request.Items, bls, entity.Id, cancellationToken);
 
-            _db.DispatchItems.RemoveRange(entity.Items);
-            entity.Items = request.Items.Select(x => new DispatchItem
+            await _db.DispatchItems
+                .Where(x => x.DispatchId == entity.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            var newItems = request.Items.Select(x => new DispatchItem
             {
                 DispatchId = entity.Id,
                 BLId = x.BLId,
                 Quantity = x.Quantity,
                 CreatedBy = actorUid
             }).ToList();
+
+            _db.DispatchItems.AddRange(newItems);
+            entity.Items = newItems;
             entity.Plate = request.Plate.Trim().ToUpperInvariant();
             entity.Comment = NormalizeComment(request.Comment);
             entity.UpdatedBy = actorUid;
