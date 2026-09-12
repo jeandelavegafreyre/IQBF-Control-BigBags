@@ -27,7 +27,7 @@ public class ReceptionService : IReceptionService
             .ThenByDescending(x => x.TransactionNumber)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(Map).ToList();
+        return rows.Select(row => Map(row)).ToList();
     }
 
     public async Task<ReceptionDto> CreateAsync(
