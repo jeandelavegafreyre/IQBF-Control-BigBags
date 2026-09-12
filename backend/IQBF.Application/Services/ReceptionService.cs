@@ -95,7 +95,6 @@ public class ReceptionService : IReceptionService
                 cancellationToken);
 
             var entity = await _db.Receptions
-                .Include(x => x.Items)
                 .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
                 ?? throw new KeyNotFoundException("Recepción no encontrada.");
 
@@ -106,14 +105,20 @@ public class ReceptionService : IReceptionService
             var bls = await GetValidBLsAsync(ids, shift.ShipId, cancellationToken);
             await ValidateReceptionQuantitiesAsync(request.Items, bls, entity.Id, cancellationToken);
 
-            _db.ReceptionItems.RemoveRange(entity.Items);
-            entity.Items = request.Items.Select(x => new ReceptionItem
+            await _db.ReceptionItems
+                .Where(x => x.ReceptionId == entity.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            var newItems = request.Items.Select(x => new ReceptionItem
             {
                 ReceptionId = entity.Id,
                 BLId = x.BLId,
                 Quantity = x.Quantity,
                 CreatedBy = actorUid
             }).ToList();
+
+            _db.ReceptionItems.AddRange(newItems);
+            entity.Items = newItems;
             entity.TerminalTruck = request.TerminalTruck.Trim();
             entity.Comment = NormalizeComment(request.Comment);
             entity.UpdatedBy = actorUid;
