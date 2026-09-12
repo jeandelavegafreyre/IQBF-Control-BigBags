@@ -15,6 +15,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/photos': {
+        target: 'http://localhost:5186',
+        changeOrigin: true,
+      },
     },
   },
 })
