@@ -6,6 +6,8 @@ public sealed record OperationalMovementDto(
     int TransactionNumber,
     DateTime CreatedAt,
     string? CreatedBy,
+    DateTime? UpdatedAt,
+    string? UpdatedBy,
     string Reference,
     string? Comment,
     IReadOnlyList<OperationalMovementItemDto> Items,
