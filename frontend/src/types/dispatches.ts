@@ -1,11 +1,13 @@
+export interface DispatchItemRequest {
+  blId: string
+  quantity: number
+}
+
 export interface CreateDispatchRequest {
   shiftId: string
   plate: string
   comment?: string
-  items: [{
-    blId: string
-    quantity: number
-  }]
+  items: DispatchItemRequest[]
 }
 
 export interface DispatchItem {
@@ -22,5 +24,7 @@ export interface Dispatch {
   comment: string | null
   createdAt: string
   createdBy: string | null
+  updatedAt: string | null
+  updatedBy: string | null
   items: DispatchItem[]
 }
