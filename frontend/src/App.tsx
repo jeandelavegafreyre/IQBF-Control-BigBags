@@ -7,6 +7,7 @@ import { LoginPage } from './pages/Login/LoginPage'
 import { OperationsPage } from './pages/Operations/OperationsPage'
 import './pages/Operations/OperationsRefinements.css'
 import { HistoryPage } from './pages/History/HistoryPage'
+import { ReportsPage } from './pages/Reports/ReportsPage'
 import { AdminPage } from './pages/Admin/AdminPage'
 import { ShiftStartPage } from './pages/Shift/ShiftStartPage'
 import { getActiveShips } from './services/shipService'
@@ -145,6 +146,13 @@ function HistoryRoute() {
   return <HistoryPage />
 }
 
+function ReportsRoute() {
+  const { selectedShip, activeShift } = useOperation()
+  if (!selectedShip) return <Navigate to="/ships" replace />
+  if (!activeShift) return <Navigate to="/shift" replace />
+  return <ReportsPage />
+}
+
 export default function App() {
   const { isAuthenticated, isLoading } = useAuth()
 
@@ -158,6 +166,7 @@ export default function App() {
       <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       <Route path="/operations" element={<ProtectedRoute><OperationsRoute /></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><HistoryRoute /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><ReportsRoute /></ProtectedRoute>} />
       <Route path="/app" element={<Navigate to="/ships" replace />} />
       <Route path="/" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
       <Route path="*" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
