@@ -20,11 +20,22 @@ function getLocalDateString(date = new Date()): string {
 
 function getErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
-    const maybeError = error as { response?: { status?: number; data?: { message?: string; title?: string } }; message?: string }
-    if (maybeError.response?.data?.message) return maybeError.response.data.message
-    if (maybeError.response?.data?.title) return maybeError.response.data.title
+    const maybeError = error as {
+      response?: {
+        status?: number
+        data?: { error?: string; message?: string; title?: string }
+      }
+      message?: string
+    }
+    const responseData = maybeError.response?.data
+    if (responseData?.error) return responseData.error
+    if (responseData?.message) return responseData.message
+    if (responseData?.title) return responseData.title
     if (maybeError.response?.status === 409) return 'Ya existe un turno abierto para esta nave. Revise el turno actual antes de iniciar uno nuevo.'
     if (maybeError.response?.status === 400) return 'La información del turno no es válida. Revise la fecha y el tipo de turno.'
+    if (maybeError.response?.status === 403) return 'No tienes permisos para iniciar o consultar turnos.'
+    if (maybeError.response?.status === 401) return 'La sesión ha expirado. Inicia sesión nuevamente.'
+    if (maybeError.response?.status === 500) return 'El servidor no pudo consultar el turno. Revisa el registro del backend para ver la causa exacta.'
     if (maybeError.message) return maybeError.message
   }
   return 'No se pudo completar la operación del turno.'
