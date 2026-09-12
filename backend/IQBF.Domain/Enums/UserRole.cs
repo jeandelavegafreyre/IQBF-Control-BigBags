@@ -7,5 +7,6 @@ public enum UserRole
 {
     Administrator = 1,
     Yard = 2,
-    User = 3
+    User = 3,
+    Management = 4
 }
