@@ -7,12 +7,13 @@ import { getShipSummary, getShiftSummary } from '../../services/dashboardService
 import { createReception } from '../../services/receptionService'
 import { createDispatch } from '../../services/dispatchService'
 import { uploadDispatchPhoto, uploadReceptionPhoto } from '../../services/photoService'
-import { closeShift } from '../../services/shiftService'
 import { createOperationsConnection } from '../../services/operationsHubService'
 import type { BL } from '../../types/bls'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import { SummaryDashboard } from './SummaryDashboard'
 import './OperationsPage.css'
+
+type ReceptionLine = { blId: string; quantity: string }
 
 function formatQuantity(quantity: number): string {
   return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(quantity)
@@ -43,7 +44,7 @@ function getShiftTypeLabel(shiftType: number): string { return shiftType === 1 ?
 export function OperationsPage() {
   const navigate = useNavigate()
   const { logout, token } = useAuth()
-  const { selectedShip, activeShift, clearActiveShift, clearOperation } = useOperation()
+  const { selectedShip, activeShift, clearOperation } = useOperation()
   const [bls, setBls] = useState<BL[]>([])
   const [shipSummary, setShipSummary] = useState<ShipSummary | null>(null)
   const [summary, setSummary] = useState<ShiftSummary | null>(null)
@@ -55,13 +56,14 @@ export function OperationsPage() {
   const [dispatchSuccessMessage, setDispatchSuccessMessage] = useState('')
   const [receptionPhotos, setReceptionPhotos] = useState<File[]>([])
   const [dispatchPhotos, setDispatchPhotos] = useState<File[]>([])
-  const [isClosingShift, setIsClosingShift] = useState(false)
-  const [closeShiftError, setCloseShiftError] = useState('')
   const [error, setError] = useState('')
   const [summaryError, setSummaryError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [form, setForm] = useState({ terminalTruck: '', blId: '', quantity: '', comment: '' })
+  const [form, setForm] = useState({ terminalTruck: '', comment: '' })
+  const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([{ blId: '', quantity: '' }])
   const [dispatchForm, setDispatchForm] = useState({ plate: '', blId: '', quantity: '', comment: '' })
+
+  const receptionTotal = receptionLines.reduce((total, line) => total + (Number(line.quantity) || 0), 0)
 
   useEffect(() => {
     if (!selectedShip) { navigate('/ships', { replace: true }); return }
@@ -75,8 +77,9 @@ export function OperationsPage() {
         if (!isMounted) return
         if (activeBLsResult.status === 'fulfilled') {
           setBls(activeBLsResult.value)
-          setForm((current) => ({ ...current, blId: activeBLsResult.value.some((bl) => bl.id === current.blId) ? current.blId : activeBLsResult.value[0]?.id ?? '' }))
-          setDispatchForm((current) => ({ ...current, blId: activeBLsResult.value.some((bl) => bl.id === current.blId) ? current.blId : activeBLsResult.value[0]?.id ?? '' }))
+          const firstBlId = activeBLsResult.value[0]?.id ?? ''
+          setReceptionLines((current) => current.map((line, index) => ({ ...line, blId: activeBLsResult.value.some((bl) => bl.id === line.blId) ? line.blId : index === 0 ? firstBlId : '' })))
+          setDispatchForm((current) => ({ ...current, blId: activeBLsResult.value.some((bl) => bl.id === current.blId) ? current.blId : firstBlId }))
         } else setError(getErrorMessage(activeBLsResult.reason))
         const summaryErrors: string[] = []
         if (shipSummaryResult.status === 'fulfilled') setShipSummary(shipSummaryResult.value); else summaryErrors.push(`Acumulado de nave: ${getErrorMessage(shipSummaryResult.reason)}`)
@@ -108,13 +111,16 @@ export function OperationsPage() {
   }
 
   function handleLogout() { clearOperation(); logout() }
-  async function handleCloseShift() {
-    if (!activeShift || isClosingShift) return
-    if (!window.confirm('¿Cerrar el turno actual? Después del cierre no se podrán registrar más recepciones ni despachos en este turno.')) return
-    setIsClosingShift(true); setCloseShiftError('')
-    try { await closeShift(activeShift.id); clearActiveShift(); navigate('/shift', { replace: true }) }
-    catch (requestError) { setCloseShiftError(getErrorMessage(requestError)) }
-    finally { setIsClosingShift(false) }
+  function updateReceptionLine(index: number, field: keyof ReceptionLine, value: string) {
+    setReceptionLines((current) => current.map((line, lineIndex) => lineIndex === index ? { ...line, [field]: value } : line))
+  }
+  function addReceptionLine() {
+    const usedIds = new Set(receptionLines.map((line) => line.blId).filter(Boolean))
+    const nextBl = bls.find((bl) => !usedIds.has(bl.id))
+    setReceptionLines((current) => [...current, { blId: nextBl?.id ?? '', quantity: '' }])
+  }
+  function removeReceptionLine(index: number) {
+    setReceptionLines((current) => current.length === 1 ? current : current.filter((_, lineIndex) => lineIndex !== index))
   }
   function validatePhotos(files: File[]): string {
     if (files.length > 3) return 'Puedes adjuntar como máximo 3 fotografías.'
@@ -123,16 +129,20 @@ export function OperationsPage() {
   }
 
   async function handleReceptionSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!activeShift || !form.blId) return
-    const quantity = Number(form.quantity)
-    if (!Number.isInteger(quantity) || quantity <= 0) { setError('La cantidad debe ser un número entero de Big Bags mayor que cero.'); return }
+    event.preventDefault(); if (!activeShift) return
+    if (!/^\d+$/.test(form.terminalTruck.trim())) { setError('Terminal Truck debe contener únicamente números.'); return }
+    if (receptionLines.some((line) => !line.blId)) { setError('Selecciona un BL en todas las líneas de recepción.'); return }
+    const blIds = receptionLines.map((line) => line.blId)
+    if (new Set(blIds).size !== blIds.length) { setError('No se puede repetir el mismo BL dentro de una recepción.'); return }
+    const items = receptionLines.map((line) => ({ blId: line.blId, quantity: Number(line.quantity) }))
+    if (items.some((item) => !Number.isInteger(item.quantity) || item.quantity <= 0)) { setError('Todas las cantidades deben ser números enteros de Big Bags mayores que cero.'); return }
     const photoError = validatePhotos(receptionPhotos); if (photoError) { setError(photoError); return }
     setIsSubmitting(true); setError(''); setSuccessMessage('')
     try {
-      const reception = await createReception({ shiftId: activeShift.id, terminalTruck: form.terminalTruck, comment: form.comment || undefined, items: [{ blId: form.blId, quantity }] })
+      const reception = await createReception({ shiftId: activeShift.id, terminalTruck: form.terminalTruck.trim(), comment: form.comment || undefined, items })
       let uploadedPhotos = 0; let photoUploadError = ''
       for (const photo of receptionPhotos) { try { await uploadReceptionPhoto(reception.id, photo); uploadedPhotos += 1 } catch (requestError) { photoUploadError = getErrorMessage(requestError); break } }
-      setForm((current) => ({ ...current, terminalTruck: '', quantity: '', comment: '' })); setReceptionPhotos([]); await refreshSummaries()
+      setForm({ terminalTruck: '', comment: '' }); setReceptionLines([{ blId: bls[0]?.id ?? '', quantity: '' }]); setReceptionPhotos([]); await refreshSummaries()
       if (photoUploadError) { setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}. No vuelva a registrar la recepción.`); setError(`La recepción quedó guardada, pero falló la evidencia fotográfica después de cargar ${uploadedPhotos} de ${receptionPhotos.length} foto(s): ${photoUploadError}`) }
       else setSuccessMessage(`Recepción registrada correctamente. Transacción #${reception.transactionNumber}.${uploadedPhotos ? ` ${uploadedPhotos} foto(s) cargada(s).` : ''}`)
     } catch (requestError) { setError(getErrorMessage(requestError)) } finally { setIsSubmitting(false) }
@@ -156,17 +166,20 @@ export function OperationsPage() {
 
   return (
     <main className="operations-shell">
-      <header className="operations-header"><div><span className="eyebrow">IQBF Control</span><h1>Operación en curso</h1><p className="operations-context">{selectedShip?.name} · {activeShift ? getShiftTypeLabel(activeShift.shiftType) : 'Sin turno'}</p></div><div className="operations-header-actions"><button type="button" className="secondary-action" onClick={() => navigate('/history')} disabled={isClosingShift || isSubmitting || isDispatchSubmitting}>Historial operativo</button><button type="button" className="secondary-action" onClick={handleCloseShift} disabled={isClosingShift || isSubmitting || isDispatchSubmitting}>{isClosingShift ? 'Cerrando turno...' : 'Cerrar turno'}</button><button type="button" className="secondary-action" onClick={handleLogout}>Cerrar sesión</button></div></header>
-      {closeShiftError ? <p className="operations-message operations-error" role="alert">{closeShiftError}</p> : null}
+      <header className="operations-header"><div><span className="eyebrow">IQBF Control</span><h1>Operación en curso</h1><p className="operations-context">{selectedShip?.name} · {activeShift ? getShiftTypeLabel(activeShift.shiftType) : 'Sin turno'}</p></div><div className="operations-header-actions"><button type="button" className="secondary-action" onClick={() => navigate('/history')} disabled={isSubmitting || isDispatchSubmitting}>Historial operativo</button><button type="button" className="secondary-action" onClick={handleLogout}>Cerrar sesión</button></div></header>
       <div className="operations-grid">
         <section className="operations-column" aria-labelledby="reception-title"><div className="operations-column-heading"><span className="eyebrow">Bloque 01</span><h2 id="reception-title">Recepción</h2></div>
           {isLoading ? <p className="operations-message">Cargando BL y resumen...</p> : null}{error ? <p className="operations-message operations-error" role="alert">{error}</p> : null}{successMessage ? <p className="operations-message operations-success" role="status">{successMessage}</p> : null}
-          {!isLoading ? <form className="reception-form" onSubmit={handleReceptionSubmit}><label className="operations-field"><span>Terminal Truck</span><input type="text" value={form.terminalTruck} onChange={(event) => setForm((current) => ({ ...current, terminalTruck: event.target.value }))} inputMode="numeric" maxLength={30} required /></label><label className="operations-field"><span>BL</span><select value={form.blId} onChange={(event) => setForm((current) => ({ ...current, blId: event.target.value }))} required disabled={bls.length === 0}><option value="">Selecciona un BL</option>{bls.map((bl) => <option key={bl.id} value={bl.id}>{bl.code} · {bl.productName} · declarado {formatQuantity(bl.totalQuantity)}</option>)}</select></label><label className="operations-field"><span>Cantidad (Big Bags)</span><input type="number" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} min="1" step="1" inputMode="numeric" required /></label><label className="operations-field"><span>Comentario <small>(opcional)</small></span><textarea value={form.comment} onChange={(event) => setForm((current) => ({ ...current, comment: event.target.value }))} maxLength={100} rows={3} /></label><label className="operations-field"><span>Evidencia fotográfica <small>(opcional · máximo 3)</small></span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setReceptionPhotos(Array.from(event.target.files ?? []).slice(0, 3))} />{receptionPhotos.length ? <small>{receptionPhotos.length} foto(s) seleccionada(s)</small> : null}</label><button type="submit" className="operations-primary-action" disabled={isSubmitting || bls.length === 0}>{isSubmitting ? 'Guardando recepción...' : 'Registrar recepción'}</button>{bls.length === 0 ? <p className="operations-hint">No hay BL activos para esta nave.</p> : null}</form> : null}
+          {!isLoading ? <form className="reception-form" onSubmit={handleReceptionSubmit}>
+            <label className="operations-field"><span>Terminal Truck</span><input type="text" value={form.terminalTruck} onChange={(event) => setForm((current) => ({ ...current, terminalTruck: event.target.value.replace(/\D/g, '') }))} inputMode="numeric" maxLength={30} required /></label>
+            <div className="reception-items"><div className="reception-items-heading"><div><strong>BL recibidos</strong><small> Agrega una línea por cada BL transportado en el mismo Terminal Truck.</small></div><button type="button" className="reception-add-line" onClick={addReceptionLine} disabled={receptionLines.length >= bls.length || bls.length === 0}>+ Agregar BL</button></div>
+              {receptionLines.map((line, index) => <div className="reception-item-row" key={index}><label className="operations-field"><span>BL {index + 1}</span><select value={line.blId} onChange={(event) => updateReceptionLine(index, 'blId', event.target.value)} required disabled={bls.length === 0}><option value="">Selecciona un BL</option>{bls.map((bl) => <option key={bl.id} value={bl.id} disabled={receptionLines.some((other, otherIndex) => otherIndex !== index && other.blId === bl.id)}>{bl.code} · {bl.productName} · declarado {formatQuantity(bl.totalQuantity)}</option>)}</select></label><label className="operations-field reception-quantity"><span>Cantidad</span><input type="number" value={line.quantity} onChange={(event) => updateReceptionLine(index, 'quantity', event.target.value)} min="1" step="1" inputMode="numeric" required /></label><button type="button" className="reception-remove-line" onClick={() => removeReceptionLine(index)} disabled={receptionLines.length === 1} aria-label={`Quitar BL ${index + 1}`}>Quitar</button></div>)}
+              <div className="reception-total"><span>Total del Terminal Truck</span><strong>{formatQuantity(receptionTotal)} Big Bags</strong></div>
+            </div>
+            <label className="operations-field"><span>Comentario <small>(opcional)</small></span><textarea value={form.comment} onChange={(event) => setForm((current) => ({ ...current, comment: event.target.value }))} maxLength={100} rows={3} /></label><label className="operations-field"><span>Evidencia fotográfica <small>(opcional · máximo 3)</small></span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setReceptionPhotos(Array.from(event.target.files ?? []).slice(0, 3))} />{receptionPhotos.length ? <small>{receptionPhotos.length} foto(s) seleccionada(s)</small> : null}</label><button type="submit" className="operations-primary-action" disabled={isSubmitting || bls.length === 0}>{isSubmitting ? 'Guardando recepción...' : `Registrar recepción · ${formatQuantity(receptionTotal)} Big Bags`}</button>{bls.length === 0 ? <p className="operations-hint">No hay BL activos para esta nave.</p> : null}</form> : null}
         </section>
         <section className="operations-column dispatch-column" aria-labelledby="dispatch-title"><div className="operations-column-heading"><span className="eyebrow">Bloque 02</span><h2 id="dispatch-title">Despacho</h2></div>{dispatchError ? <p className="operations-message operations-error" role="alert">{dispatchError}</p> : null}{dispatchSuccessMessage ? <p className="operations-message operations-success" role="status">{dispatchSuccessMessage}</p> : null}<form className="reception-form" onSubmit={handleDispatchSubmit}><label className="operations-field"><span>Placa</span><input type="text" value={dispatchForm.plate} onChange={(event) => setDispatchForm((current) => ({ ...current, plate: event.target.value }))} maxLength={20} required /></label><label className="operations-field"><span>BL</span><select value={dispatchForm.blId} onChange={(event) => setDispatchForm((current) => ({ ...current, blId: event.target.value }))} required disabled={bls.length === 0}><option value="">Selecciona un BL</option>{bls.map((bl) => <option key={bl.id} value={bl.id}>{bl.code} · {bl.productName} · declarado {formatQuantity(bl.totalQuantity)}</option>)}</select></label><label className="operations-field"><span>Cantidad (Big Bags)</span><input type="number" value={dispatchForm.quantity} onChange={(event) => setDispatchForm((current) => ({ ...current, quantity: event.target.value }))} min="1" step="1" inputMode="numeric" required /></label><label className="operations-field"><span>Comentario <small>(opcional)</small></span><textarea value={dispatchForm.comment} onChange={(event) => setDispatchForm((current) => ({ ...current, comment: event.target.value }))} maxLength={100} rows={3} /></label><label className="operations-field"><span>Evidencia fotográfica <small>(opcional · máximo 3)</small></span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setDispatchPhotos(Array.from(event.target.files ?? []).slice(0, 3))} />{dispatchPhotos.length ? <small>{dispatchPhotos.length} foto(s) seleccionada(s)</small> : null}</label><button type="submit" className="operations-primary-action" disabled={isDispatchSubmitting || bls.length === 0}>{isDispatchSubmitting ? 'Guardando despacho...' : 'Registrar despacho'}</button>{bls.length === 0 ? <p className="operations-hint">No hay BL activos para esta nave.</p> : null}</form></section>
-        <section className="operations-column summary-column" aria-labelledby="summary-title"><div className="operations-column-heading"><span className="eyebrow">En vivo</span><h2 id="summary-title">Resumen dinámico</h2></div>{summaryError ? <p className="operations-message operations-error" role="alert">{summaryError}</p> : null}{isSummaryRefreshing ? <p className="operations-message">Actualizando resúmenes...</p> : null}
-          {shipSummary ? <SummaryDashboard shipSummary={shipSummary} shiftSummary={summary} /> : !isLoading && !summaryError ? <p className="operations-message">No se pudo cargar el resumen de la nave.</p> : null}
-        </section>
+        <section className="operations-column summary-column" aria-labelledby="summary-title"><div className="operations-column-heading"><span className="eyebrow">En vivo</span><h2 id="summary-title">Resumen dinámico</h2></div>{summaryError ? <p className="operations-message operations-error" role="alert">{summaryError}</p> : null}{isSummaryRefreshing ? <p className="operations-message">Actualizando resúmenes...</p> : null}{shipSummary ? <SummaryDashboard shipSummary={shipSummary} shiftSummary={summary} /> : !isLoading && !summaryError ? <p className="operations-message">No se pudo cargar el resumen de la nave.</p> : null}</section>
       </div>
     </main>
   )
