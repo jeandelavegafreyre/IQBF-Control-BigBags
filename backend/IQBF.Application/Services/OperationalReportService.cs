@@ -134,4 +134,194 @@ public sealed class OperationalReportService : IOperationalReportService
             .ThenByDescending(x => x.TransactionNumber)
             .ToList();
     }
+
+    public async Task<ManagementReportDto> GetManagementReportAsync(
+        int year,
+        int month,
+        CancellationToken cancellationToken = default)
+    {
+        if (year < 2000 || year > 2100)
+            throw new ArgumentException("El año solicitado no es válido.");
+        if (month < 1 || month > 12)
+            throw new ArgumentException("El mes solicitado no es válido.");
+
+        // CreatedAt se almacena en UTC. Para los reportes operativos se clasifica por hora de Perú (UTC-5).
+        static DateTime PeruTime(DateTime utc) => utc.AddHours(-5);
+
+        var dispatchTimeline = await _dbContext.Dispatches
+            .AsNoTracking()
+            .Select(x => new
+            {
+                x.Id,
+                x.CreatedAt,
+                ShipId = x.Shift!.ShipId,
+                ShipName = x.Shift.Ship!.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        var lastDispatchByShip = dispatchTimeline
+            .GroupBy(x => new { x.ShipId, x.ShipName })
+            .Select(group => new
+            {
+                group.Key.ShipId,
+                group.Key.ShipName,
+                LastDispatchAt = group.Max(x => x.CreatedAt)
+            })
+            .ToList();
+
+        var completedInMonth = lastDispatchByShip
+            .Where(x =>
+            {
+                var local = PeruTime(x.LastDispatchAt);
+                return local.Year == year && local.Month == month;
+            })
+            .OrderByDescending(x => x.LastDispatchAt)
+            .ToList();
+
+        var targetShipIds = completedInMonth.Select(x => x.ShipId).Distinct().ToList();
+
+        var yearlyTrend = lastDispatchByShip
+            .Where(x => PeruTime(x.LastDispatchAt).Year == year)
+            .GroupBy(x => PeruTime(x.LastDispatchAt).Month)
+            .ToDictionary(x => x.Key, x => x.Select(y => y.ShipId).Distinct().Count());
+
+        var dispatchQuantityByShipAll = await _dbContext.DispatchItems
+            .AsNoTracking()
+            .Select(x => new
+            {
+                ShipId = x.BL!.ShipId,
+                x.Quantity
+            })
+            .ToListAsync(cancellationToken);
+
+        var dispatchQuantityLookup = dispatchQuantityByShipAll
+            .GroupBy(x => x.ShipId)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.Quantity));
+
+        var trend = Enumerable.Range(1, 12)
+            .Select(trendMonth =>
+            {
+                var shipIds = lastDispatchByShip
+                    .Where(x =>
+                    {
+                        var local = PeruTime(x.LastDispatchAt);
+                        return local.Year == year && local.Month == trendMonth;
+                    })
+                    .Select(x => x.ShipId)
+                    .Distinct()
+                    .ToList();
+                return new ManagementMonthlyTrendDto(
+                    trendMonth,
+                    yearlyTrend.GetValueOrDefault(trendMonth),
+                    shipIds.Sum(id => dispatchQuantityLookup.GetValueOrDefault(id)));
+            })
+            .ToList();
+
+        if (targetShipIds.Count == 0)
+        {
+            return new ManagementReportDto(year, month, 0, 0, 0, 0, [], trend, []);
+        }
+
+        var blRows = await _dbContext.BLs
+            .AsNoTracking()
+            .Where(x => targetShipIds.Contains(x.ShipId))
+            .Select(x => new
+            {
+                x.Id,
+                x.ShipId,
+                x.TotalQuantity,
+                ProductName = x.Product!.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        var receptionRows = await _dbContext.Receptions
+            .AsNoTracking()
+            .Where(x => targetShipIds.Contains(x.Shift!.ShipId))
+            .Select(x => new { x.Id, x.CreatedAt, ShipId = x.Shift!.ShipId })
+            .ToListAsync(cancellationToken);
+
+        var dispatchRows = dispatchTimeline
+            .Where(x => targetShipIds.Contains(x.ShipId))
+            .ToList();
+
+        var receptionItems = await _dbContext.ReceptionItems
+            .AsNoTracking()
+            .Where(x => targetShipIds.Contains(x.BL!.ShipId))
+            .Select(x => new
+            {
+                x.BLId,
+                ShipId = x.BL!.ShipId,
+                ProductName = x.BL.Product!.Name,
+                x.Quantity
+            })
+            .ToListAsync(cancellationToken);
+
+        var dispatchItems = await _dbContext.DispatchItems
+            .AsNoTracking()
+            .Where(x => targetShipIds.Contains(x.BL!.ShipId))
+            .Select(x => new
+            {
+                x.BLId,
+                ShipId = x.BL!.ShipId,
+                ProductName = x.BL.Product!.Name,
+                x.Quantity
+            })
+            .ToListAsync(cancellationToken);
+
+        var shipRows = completedInMonth.Select(ship =>
+        {
+            var bls = blRows.Where(x => x.ShipId == ship.ShipId).ToList();
+            var receptionsForShip = receptionRows.Where(x => x.ShipId == ship.ShipId).ToList();
+            var dispatchesForShip = dispatchRows.Where(x => x.ShipId == ship.ShipId).ToList();
+            var received = receptionItems.Where(x => x.ShipId == ship.ShipId).Sum(x => x.Quantity);
+            var dispatched = dispatchItems.Where(x => x.ShipId == ship.ShipId).Sum(x => x.Quantity);
+            var firstReception = receptionsForShip.Count == 0
+                ? (DateTime?)null
+                : receptionsForShip.Min(x => x.CreatedAt);
+            var durationHours = firstReception.HasValue
+                ? Math.Max(0, (ship.LastDispatchAt - firstReception.Value).TotalHours)
+                : 0;
+
+            return new ManagementShipDto(
+                ship.ShipId,
+                ship.ShipName,
+                firstReception,
+                ship.LastDispatchAt,
+                bls.Sum(x => x.TotalQuantity),
+                received,
+                dispatched,
+                received - dispatched,
+                receptionsForShip.Count,
+                dispatchesForShip.Count,
+                Math.Round(durationHours, 1),
+                bls.Count,
+                bls.Select(x => x.ProductName).Distinct().OrderBy(x => x).ToList());
+        }).ToList();
+
+        var products = blRows
+            .GroupBy(x => x.ProductName)
+            .Select(group =>
+            {
+                var blIds = group.Select(x => x.Id).ToHashSet();
+                return new ManagementProductDto(
+                    group.Key,
+                    group.Sum(x => x.TotalQuantity),
+                    receptionItems.Where(x => blIds.Contains(x.BLId)).Sum(x => x.Quantity),
+                    dispatchItems.Where(x => blIds.Contains(x.BLId)).Sum(x => x.Quantity),
+                    group.Select(x => x.ShipId).Distinct().Count());
+            })
+            .OrderByDescending(x => x.DispatchedQuantity)
+            .ToList();
+
+        return new ManagementReportDto(
+            year,
+            month,
+            shipRows.Count,
+            shipRows.Sum(x => x.ReceivedQuantity),
+            shipRows.Sum(x => x.DispatchedQuantity),
+            shipRows.Sum(x => x.DeclaredQuantity),
+            shipRows,
+            trend,
+            products);
+    }
 }
