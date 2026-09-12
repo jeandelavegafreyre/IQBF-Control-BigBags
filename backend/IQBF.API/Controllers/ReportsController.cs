@@ -27,4 +27,16 @@ public sealed class ReportsController : ControllerBase
         var result = await _reportService.GetShiftMovementsAsync(shiftId, cancellationToken);
         return Ok(result);
     }
+
+    [HttpGet("management")]
+    [Authorize(Roles = "Administrator,Management")]
+    [ProducesResponseType(typeof(ManagementReportDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ManagementReportDto>> GetManagementReport(
+        [FromQuery] int year,
+        [FromQuery] int month,
+        CancellationToken cancellationToken)
+    {
+        var result = await _reportService.GetManagementReportAsync(year, month, cancellationToken);
+        return Ok(result);
+    }
 }
