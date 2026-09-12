@@ -103,25 +103,6 @@ public static class DevelopmentDataSeeder
             });
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var hasOpenShift = await db.Shifts.AnyAsync(x =>
-            x.ShipId == ship1.Id &&
-            x.ShiftDate == today &&
-            x.Status == ShiftStatus.Open);
-
-        if (!hasOpenShift)
-        {
-            db.Shifts.Add(new Shift
-            {
-                ShipId = ship1.Id,
-                ShiftDate = today,
-                ShiftType = ShiftType.Day,
-                Status = ShiftStatus.Open,
-                StartedAt = DateTime.UtcNow,
-                CreatedBy = createdBy
-            });
-        }
-
         await db.SaveChangesAsync();
     }
 }
