@@ -46,11 +46,31 @@ a {
   padding: 1rem 0 3rem;
 }
 
+.ship-page-header {
+  align-items: center;
+}
+
+.ship-page-header > div:first-child {
+  max-width: 44rem;
+}
+
+.ship-page-subtitle {
+  max-width: 42rem;
+  margin-top: 1rem;
+  color: #6b625c;
+  font-size: 1rem;
+}
+
 .ship-selection {
   padding: clamp(1.5rem, 4vw, 3rem);
   border: 1px solid var(--border);
   background: #ffffff;
   box-shadow: 0 1.5rem 4rem rgba(40, 58, 51, 0.08);
+}
+
+.ship-selection-panel {
+  border-radius: 1.5rem;
+  overflow: hidden;
 }
 
 .section-heading {
@@ -60,6 +80,32 @@ a {
   gap: 1rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
+}
+
+.ship-selection-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-heading-copy h2 {
+  margin-top: 0.4rem;
+}
+
+.section-heading-copy p {
+  margin-top: 0.75rem;
+  font-size: 0.98rem;
+}
+
+.ship-selection-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .eyebrow {
@@ -112,7 +158,8 @@ p {
 }
 
 .user-badge,
-.ship-status {
+.ship-status,
+.ship-count-badge {
   color: var(--primary-dark);
   font-size: 0.75rem;
   font-weight: 700;
@@ -120,9 +167,17 @@ p {
   text-transform: uppercase;
 }
 
-.user-badge {
-  padding: 0.5rem 0.75rem;
+.user-badge,
+.ship-count-badge {
+  padding: 0.55rem 0.8rem;
   border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.ship-count-badge {
+  color: #4f4a46;
+  background: #f8f6f3;
 }
 
 .status-message {
@@ -133,57 +188,201 @@ p {
   color: #a32d22;
 }
 
+.ship-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+  max-width: none;
+  padding: 3rem 1rem 1rem;
+  text-align: center;
+}
+
+.ship-empty-state p {
+  max-width: 28rem;
+  font-size: 0.95rem;
+}
+
+.ship-empty-state strong {
+  color: #292724;
+  font-size: 1.1rem;
+}
+
+.ship-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.9rem;
+  color: var(--primary-dark);
+  background: var(--surface-muted);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
 .ship-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
   gap: 1rem;
-  padding-top: 1.5rem;
+  padding-top: 1.75rem;
 }
 
 .ship-option {
   display: grid;
-  gap: 0.75rem;
-  min-height: 9rem;
+  grid-template-rows: auto 1fr auto;
+  gap: 1.25rem;
+  min-height: 13rem;
   padding: 1.25rem;
   color: #5f5a56;
-  border: 1px solid var(--border);
-  border-top: 4px solid transparent;
-  background: #ffffff;
+  border: 1px solid #e8dfd7;
+  border-radius: 1.15rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fffcf9 100%);
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  box-shadow: 0 0.5rem 1.5rem rgba(73, 58, 46, 0.05);
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
 .ship-option:hover,
 .ship-option:focus-visible {
   border-color: var(--primary);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 1rem 2rem rgba(73, 58, 46, 0.1);
+  outline: none;
 }
 
 .ship-option.is-selected {
   border-color: var(--primary);
-  border-top-color: var(--primary);
-  background: var(--surface-muted);
+  background: linear-gradient(180deg, #fffaf5 0%, #fff3e8 100%);
+  box-shadow: 0 0 0 2px rgba(237, 108, 2, 0.08), 0 1rem 2rem rgba(73, 58, 46, 0.08);
+}
+
+.ship-card-top,
+.ship-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ship-card-index {
+  display: grid;
+  place-items: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.5rem;
+  border-radius: 0.75rem;
+  color: #736a63;
+  background: #f4f0ec;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.ship-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  color: #2f6b3b;
+  background: #eef8f0;
+}
+
+.ship-status-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #3f8b50;
+  box-shadow: 0 0 0 3px rgba(63, 139, 80, 0.12);
+}
+
+.ship-card-body {
+  display: grid;
+  align-content: center;
+  gap: 0.4rem;
+}
+
+.ship-card-label {
+  color: #8b817a;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .ship-option strong {
   color: #1e1e1e;
-  font-size: 1.2rem;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  line-height: 1.2;
 }
 
-@media (max-width: 600px) {
+.ship-card-footer {
+  padding-top: 1rem;
+  border-top: 1px solid #eee6df;
+  color: var(--primary-dark);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.ship-card-arrow {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  font-size: 1.05rem;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.ship-option:hover .ship-card-arrow,
+.ship-option:focus-visible .ship-card-arrow {
+  transform: translateX(3px);
+  background: #ffe9d5;
+}
+
+@media (max-width: 760px) {
   .app-shell {
     padding: 1rem;
   }
 
-  .app-header {
-    align-items: start;
+  .app-header,
+  .ship-page-header {
+    align-items: stretch;
     flex-direction: column;
     padding: 1rem 0 2rem;
   }
 
-  .section-heading {
-    align-items: start;
+  .operations-header-actions {
+    width: 100%;
+  }
+
+  .operations-header-actions .secondary-action {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .ship-selection {
+    padding: 1.15rem;
+    border-radius: 1.1rem;
+  }
+
+  .section-heading,
+  .ship-selection-topbar {
+    align-items: stretch;
     flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ship-selection-meta {
+    justify-content: flex-start;
+  }
+
+  .ship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ship-option {
+    min-height: 11.5rem;
   }
 }
