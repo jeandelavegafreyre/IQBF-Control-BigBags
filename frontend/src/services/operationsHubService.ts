@@ -11,16 +11,35 @@ function getActiveShiftId(): string {
   }
 }
 
+function invalidateSession(message?: string) {
+  localStorage.removeItem('token')
+  localStorage.removeItem('authUser')
+  sessionStorage.setItem(
+    'sessionMessage',
+    message || 'Tu sesión ya no es válida. Inicia sesión nuevamente.',
+  )
+
+  if (window.location.pathname !== '/login') {
+    window.location.replace('/login')
+  }
+}
+
 export function createOperationsConnection(token: string): signalR.HubConnection {
   const apiUrl = import.meta.env.VITE_API_URL as string
   const shiftId = getActiveShiftId()
   const baseHubUrl = `${apiUrl.replace(/\/$/, '')}/hubs/operations`
   const hubUrl = shiftId ? `${baseHubUrl}?shiftId=${encodeURIComponent(shiftId)}` : baseHubUrl
 
-  return new signalR.HubConnectionBuilder()
+  const connection = new signalR.HubConnectionBuilder()
     .withUrl(hubUrl, {
       accessTokenFactory: () => token,
     })
-    .withAutomaticReconnect()
+    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
     .build()
+
+  connection.on('SessionRevoked', (message?: string) => {
+    invalidateSession(message)
+  })
+
+  return connection
 }
