@@ -24,5 +24,7 @@ export interface Reception {
   comment: string | null
   createdAt: string
   createdBy: string | null
+  updatedAt: string | null
+  updatedBy: string | null
   items: ReceptionItem[]
 }
