@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import type { ShipSummary, ShiftSummary } from '../../types/dashboard'
 import './SummaryDashboard.css'
 
@@ -15,6 +16,7 @@ function clampPercent(value: number): number {
 }
 
 export function SummaryDashboard({ shipSummary, shiftSummary }: SummaryDashboardProps) {
+  const navigate = useNavigate()
   const maxDeclared = Math.max(...shipSummary.bLs.map((bl) => bl.totalQuantity), 1)
   const receivedPercent = clampPercent(shipSummary.receptionProgress)
   const dispatchedPercent = shipSummary.receivedQuantity > 0
@@ -129,6 +131,7 @@ export function SummaryDashboard({ shipSummary, shiftSummary }: SummaryDashboard
             <span className="eyebrow">Movimiento del período</span>
             <h3 id="shift-live-title">Turno actual</h3>
           </div>
+          <button type="button" className="live-report-action" onClick={() => navigate('/reports')}>Ver reporte</button>
         </div>
         {shiftSummary ? (
           <div className="live-shift-metrics">
