@@ -54,38 +54,47 @@ function ShipsPage() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="app-header">
+    <main className="app-shell ship-page-shell">
+      <header className="app-header ship-page-header">
         <div>
           <span className="eyebrow">IQBF Control</span>
           <h1 id="app-title">Selecciona una nave</h1>
+          <p className="ship-page-subtitle">Elige la nave que vas a gestionar para continuar con la selección del turno.</p>
         </div>
         <div className="operations-header-actions">
-          {user?.role === 'Administrator' ? <button type="button" className="secondary-action" onClick={() => navigate('/admin')}>Administración</button> : null}
+          {user?.role === 'Administrator' ? <button type="button" className="secondary-action" onClick={() => navigate('/admin')}>Configuración</button> : null}
           <button type="button" className="secondary-action" onClick={handleLogout}>
             Cerrar sesión
           </button>
         </div>
       </header>
 
-      <section className="ship-selection" aria-labelledby="ship-selection-title">
-        <div className="section-heading">
-          <div>
+      <section className="ship-selection ship-selection-panel" aria-labelledby="ship-selection-title">
+        <div className="ship-selection-topbar">
+          <div className="section-heading-copy">
             <span className="eyebrow">Operación</span>
-            <h2 id="ship-selection-title">Naves activas</h2>
+            <h2 id="ship-selection-title">Naves disponibles</h2>
+            <p>Solo se muestran las naves activadas por el Administrador.</p>
           </div>
-          {user ? <span className="user-badge">{user.fullName}</span> : null}
+          <div className="ship-selection-meta">
+            <span className="ship-count-badge">{ships.length} {ships.length === 1 ? 'nave activa' : 'naves activas'}</span>
+            {user ? <span className="user-badge">{user.fullName}</span> : null}
+          </div>
         </div>
 
-        {isLoading ? <p className="status-message">Cargando naves activas...</p> : null}
-        {error ? <p className="status-message error-message" role="alert">{error}</p> : null}
+        {isLoading ? <p className="status-message ship-empty-state">Cargando naves activas...</p> : null}
+        {error ? <p className="status-message error-message ship-empty-state" role="alert">{error}</p> : null}
         {!isLoading && !error && ships.length === 0 ? (
-          <p className="status-message">No hay naves activas disponibles.</p>
+          <div className="ship-empty-state">
+            <span className="ship-empty-icon">NV</span>
+            <strong>No hay naves activas</strong>
+            <p>Solicita al Administrador que active una nave desde Configuración.</p>
+          </div>
         ) : null}
 
         {!isLoading && !error && ships.length > 0 ? (
           <div className="ship-grid">
-            {ships.map((ship) => {
+            {ships.map((ship, index) => {
               const isSelected = selectedShip?.id === ship.id
               return (
                 <button
@@ -95,9 +104,18 @@ function ShipsPage() {
                   aria-pressed={isSelected}
                   onClick={() => handleShipSelection(ship)}
                 >
-                  <span className="ship-status">Activa</span>
-                  <strong>{ship.name}</strong>
-                  <span>{isSelected ? 'Nave seleccionada' : 'Seleccionar nave'}</span>
+                  <div className="ship-card-top">
+                    <span className="ship-card-index">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="ship-status"><span className="ship-status-dot" /> Activa</span>
+                  </div>
+                  <div className="ship-card-body">
+                    <span className="ship-card-label">Nave</span>
+                    <strong>{ship.name}</strong>
+                  </div>
+                  <div className="ship-card-footer">
+                    <span>{isSelected ? 'Nave seleccionada' : 'Seleccionar nave'}</span>
+                    <span className="ship-card-arrow" aria-hidden="true">→</span>
+                  </div>
                 </button>
               )
             })}
