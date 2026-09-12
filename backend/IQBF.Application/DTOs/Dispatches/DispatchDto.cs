@@ -10,5 +10,7 @@ public sealed record DispatchDto(
     string? Comment,
     DateTime CreatedAt,
     string? CreatedBy,
+    DateTime? UpdatedAt,
+    string? UpdatedBy,
     IReadOnlyCollection<DispatchItemDto> Items
 );
