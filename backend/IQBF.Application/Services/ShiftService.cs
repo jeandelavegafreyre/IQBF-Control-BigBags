@@ -17,19 +17,14 @@ public class ShiftService : IShiftService
         if (shipId == Guid.Empty)
             throw new ArgumentException("shipId es obligatorio.");
 
-        var openShifts = await _db.Shifts
+        var shift = await _db.Shifts
             .AsNoTracking()
             .Include(x => x.Ship)
             .Where(x => x.ShipId == shipId && x.Status == ShiftStatus.Open)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(x => x.ShiftDate)
+            .ThenByDescending(x => x.StartedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (openShifts.Count > 1)
-        {
-            throw new InvalidOperationException(
-                "Existen múltiples turnos abiertos para esta nave. Se requiere regularizar la situación.");
-        }
-
-        var shift = openShifts.SingleOrDefault();
         return shift is null
             ? null
             : new ShiftDto(
@@ -47,12 +42,40 @@ public class ShiftService : IShiftService
     {
         var ship = await _db.Ships.FirstOrDefaultAsync(x => x.Id == request.ShipId, cancellationToken)
             ?? throw new KeyNotFoundException("Nave no encontrada.");
-        if (ship.Status != ShipStatus.Active) throw new InvalidOperationException("Solo se puede iniciar control sobre una nave activa.");
+        if (ship.Status != ShipStatus.Active)
+            throw new InvalidOperationException("Solo se puede iniciar control sobre una nave activa.");
 
-        var exists = await _db.Shifts.AnyAsync(x =>
-            x.ShipId == request.ShipId && x.ShiftDate == request.ShiftDate && x.ShiftType == request.ShiftType,
+        var existingOpenShift = await _db.Shifts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.ShipId == request.ShipId &&
+                x.ShiftDate == request.ShiftDate &&
+                x.ShiftType == request.ShiftType &&
+                x.Status == ShiftStatus.Open,
+                cancellationToken);
+
+        if (existingOpenShift is not null)
+        {
+            return new ShiftDto(
+                existingOpenShift.Id,
+                existingOpenShift.ShiftDate,
+                existingOpenShift.ShiftType,
+                existingOpenShift.Status,
+                existingOpenShift.StartedAt,
+                existingOpenShift.EndedAt,
+                ship.Id,
+                ship.Name);
+        }
+
+        var closedShiftExists = await _db.Shifts.AnyAsync(x =>
+            x.ShipId == request.ShipId &&
+            x.ShiftDate == request.ShiftDate &&
+            x.ShiftType == request.ShiftType &&
+            x.Status == ShiftStatus.Closed,
             cancellationToken);
-        if (exists) throw new InvalidOperationException("Ya existe un turno para esa nave, fecha y tipo.");
+
+        if (closedShiftExists)
+            throw new InvalidOperationException("Ese turno ya fue cerrado para esta nave.");
 
         var entity = new Shift
         {
@@ -63,10 +86,19 @@ public class ShiftService : IShiftService
             StartedAt = DateTime.UtcNow,
             CreatedBy = actorUid
         };
+
         _db.Shifts.Add(entity);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new ShiftDto(entity.Id, entity.ShiftDate, entity.ShiftType, entity.Status, entity.StartedAt, entity.EndedAt, ship.Id, ship.Name);
+        return new ShiftDto(
+            entity.Id,
+            entity.ShiftDate,
+            entity.ShiftType,
+            entity.Status,
+            entity.StartedAt,
+            entity.EndedAt,
+            ship.Id,
+            ship.Name);
     }
 
     public async Task CloseAsync(Guid shiftId, string actorUid, CancellationToken cancellationToken = default)
