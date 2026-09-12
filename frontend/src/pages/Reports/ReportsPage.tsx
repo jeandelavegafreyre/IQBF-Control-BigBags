@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperation } from '../../context/OperationContext'
+import { getShipSummary } from '../../services/dashboardService'
 import { getShiftMovements } from '../../services/reportService'
+import type { ShipSummary } from '../../types/dashboard'
 import type { OperationalMovement } from '../../types/reports'
 import './ReportsPage.css'
 
@@ -11,7 +13,7 @@ type BLReportRow = {
   productName: string
   received: number
   dispatched: number
-  balance: number
+  available: number
 }
 
 function formatQuantity(value: number) {
@@ -41,6 +43,7 @@ export function ReportsPage() {
   const navigate = useNavigate()
   const { selectedShip, activeShift } = useOperation()
   const [movements, setMovements] = useState<OperationalMovement[]>([])
+  const [shipSummary, setShipSummary] = useState<ShipSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -49,12 +52,25 @@ export function ReportsPage() {
     let mounted = true
     setIsLoading(true)
     setError('')
-    getShiftMovements(activeShift.id)
-      .then((data) => { if (mounted) setMovements(data) })
-      .catch((requestError) => { if (mounted) setError(errorMessage(requestError)) })
-      .finally(() => { if (mounted) setIsLoading(false) })
+
+    Promise.all([
+      getShiftMovements(activeShift.id),
+      getShipSummary(activeShift.shipId),
+    ])
+      .then(([movementData, summaryData]) => {
+        if (!mounted) return
+        setMovements(movementData)
+        setShipSummary(summaryData)
+      })
+      .catch((requestError) => {
+        if (mounted) setError(errorMessage(requestError))
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false)
+      })
+
     return () => { mounted = false }
-  }, [activeShift?.id])
+  }, [activeShift?.id, activeShift?.shipId])
 
   const report = useMemo(() => {
     const byBL = new Map<string, BLReportRow>()
@@ -69,14 +85,16 @@ export function ReportsPage() {
       else dispatchTransactions += 1
 
       for (const item of movement.items) {
+        const shipBl = shipSummary?.bLs.find((bl) => bl.id === item.blId)
         const current = byBL.get(item.blId) ?? {
           blId: item.blId,
           blCode: item.blCode,
           productName: item.productName,
           received: 0,
           dispatched: 0,
-          balance: 0,
+          available: shipBl?.availableQuantity ?? 0,
         }
+
         if (isReception) {
           current.received += item.quantity
           received += item.quantity
@@ -84,7 +102,8 @@ export function ReportsPage() {
           current.dispatched += item.quantity
           dispatched += item.quantity
         }
-        current.balance = current.received - current.dispatched
+
+        current.available = shipBl?.availableQuantity ?? current.available
         byBL.set(item.blId, current)
       }
     }
@@ -92,12 +111,12 @@ export function ReportsPage() {
     return {
       received,
       dispatched,
-      balance: received - dispatched,
+      stockAvailable: shipSummary?.availableQuantity ?? 0,
       receptionTransactions,
       dispatchTransactions,
       rows: Array.from(byBL.values()).sort((a, b) => a.blCode.localeCompare(b.blCode)),
     }
-  }, [movements])
+  }, [movements, shipSummary])
 
   function exportCsv() {
     if (!activeShift) return
@@ -106,10 +125,10 @@ export function ReportsPage() {
       ['Fecha', activeShift.shiftDate],
       ['Turno', shiftLabel(activeShift.shiftType)],
       [],
-      ['BL', 'Producto', 'Recepcion', 'Despacho', 'Saldo'],
-      ...report.rows.map((row) => [row.blCode, row.productName, row.received, row.dispatched, row.balance]),
+      ['BL', 'Producto', 'Recepcion turno', 'Despacho turno', 'Stock disponible nave'],
+      ...report.rows.map((row) => [row.blCode, row.productName, row.received, row.dispatched, row.available]),
       [],
-      ['TOTAL', '', report.received, report.dispatched, report.balance],
+      ['TOTAL', '', report.received, report.dispatched, report.stockAvailable],
     ]
     const csv = rows
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
@@ -154,20 +173,20 @@ export function ReportsPage() {
         {!isLoading && !error ? (
           <>
             <div className="reports-kpis">
-              <article><span>Recepción</span><strong>{formatQuantity(report.received)}</strong><small>Big Bags</small></article>
-              <article><span>Despacho</span><strong>{formatQuantity(report.dispatched)}</strong><small>Big Bags</small></article>
-              <article><span>Saldo</span><strong>{formatQuantity(report.balance)}</strong><small>Big Bags</small></article>
+              <article><span>Recepción del turno</span><strong>{formatQuantity(report.received)}</strong><small>Big Bags</small></article>
+              <article><span>Despacho del turno</span><strong>{formatQuantity(report.dispatched)}</strong><small>Big Bags</small></article>
+              <article><span>Stock disponible</span><strong>{formatQuantity(report.stockAvailable)}</strong><small>Acumulado de la nave</small></article>
               <article><span>Movimientos</span><strong>{movements.length}</strong><small>{report.receptionTransactions} recepción · {report.dispatchTransactions} despacho</small></article>
             </div>
 
             <section className="reports-section">
-              <div className="reports-section-title"><div><span className="eyebrow">Consolidado</span><h2>Balance por BL</h2></div><span>{report.rows.length} BL</span></div>
+              <div className="reports-section-title"><div><span className="eyebrow">Consolidado</span><h2>Movimiento por BL</h2></div><span>{report.rows.length} BL</span></div>
               {report.rows.length === 0 ? <p className="reports-empty">No hay movimientos registrados en este turno.</p> : (
                 <div className="reports-table-wrap">
                   <table className="reports-table">
-                    <thead><tr><th>BL</th><th>Producto</th><th>Recepción</th><th>Despacho</th><th>Saldo</th></tr></thead>
-                    <tbody>{report.rows.map((row) => <tr key={row.blId}><td><strong>{row.blCode}</strong></td><td>{row.productName}</td><td>{formatQuantity(row.received)}</td><td>{formatQuantity(row.dispatched)}</td><td><strong>{formatQuantity(row.balance)}</strong></td></tr>)}</tbody>
-                    <tfoot><tr><td colSpan={2}>TOTAL</td><td>{formatQuantity(report.received)}</td><td>{formatQuantity(report.dispatched)}</td><td>{formatQuantity(report.balance)}</td></tr></tfoot>
+                    <thead><tr><th>BL</th><th>Producto</th><th>Recepción turno</th><th>Despacho turno</th><th>Stock disponible</th></tr></thead>
+                    <tbody>{report.rows.map((row) => <tr key={row.blId}><td><strong>{row.blCode}</strong></td><td>{row.productName}</td><td>{formatQuantity(row.received)}</td><td>{formatQuantity(row.dispatched)}</td><td><strong>{formatQuantity(row.available)}</strong></td></tr>)}</tbody>
+                    <tfoot><tr><td colSpan={2}>TOTAL</td><td>{formatQuantity(report.received)}</td><td>{formatQuantity(report.dispatched)}</td><td>{formatQuantity(report.stockAvailable)}</td></tr></tfoot>
                   </table>
                 </div>
               )}
