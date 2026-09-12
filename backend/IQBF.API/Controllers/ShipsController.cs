@@ -13,6 +13,11 @@ public class ShipsController : ControllerBase
     private readonly IShipService _service;
     public ShipsController(IShipService service) => _service = service;
 
+    [HttpGet]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
+        Ok(await _service.GetAllAsync(cancellationToken));
+
     [HttpGet("active")]
     public async Task<IActionResult> GetActive(CancellationToken cancellationToken) =>
         Ok(await _service.GetActiveAsync(cancellationToken));
@@ -21,4 +26,9 @@ public class ShipsController : ControllerBase
     [Authorize(Roles = "Administrator")]
     public async Task<IActionResult> Create(CreateShipRequest request, CancellationToken cancellationToken) =>
         Ok(await _service.CreateAsync(request, User.Identity!.Name!, cancellationToken));
+
+    [HttpPut("{shipId:guid}/status")]
+    [Authorize(Roles = "Administrator")]
+    public async Task<IActionResult> UpdateStatus(Guid shipId, UpdateShipStatusRequest request, CancellationToken cancellationToken) =>
+        Ok(await _service.UpdateStatusAsync(shipId, request, User.Identity!.Name!, cancellationToken));
 }
