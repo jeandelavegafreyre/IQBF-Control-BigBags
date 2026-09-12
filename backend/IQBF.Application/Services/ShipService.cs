@@ -12,6 +12,12 @@ public class ShipService : IShipService
     private readonly IQBFDbContext _db;
     public ShipService(IQBFDbContext db) => _db = db;
 
+    public async Task<IReadOnlyCollection<ShipDto>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        await _db.Ships.AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => new ShipDto(x.Id, x.Name, x.Status))
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyCollection<ShipDto>> GetActiveAsync(CancellationToken cancellationToken = default) =>
         await _db.Ships.AsNoTracking()
             .Where(x => x.Status == ShipStatus.Active)
@@ -28,6 +34,17 @@ public class ShipService : IShipService
 
         var entity = new Ship { Name = name, Status = ShipStatus.Active, CreatedBy = actorUid };
         _db.Ships.Add(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return new ShipDto(entity.Id, entity.Name, entity.Status);
+    }
+
+    public async Task<ShipDto> UpdateStatusAsync(Guid shipId, UpdateShipStatusRequest request, string actorUid, CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.Ships.FirstOrDefaultAsync(x => x.Id == shipId, cancellationToken)
+            ?? throw new KeyNotFoundException("Nave no encontrada.");
+
+        entity.Status = request.IsActive ? ShipStatus.Active : ShipStatus.Inactive;
+        entity.UpdatedBy = actorUid;
         await _db.SaveChangesAsync(cancellationToken);
         return new ShipDto(entity.Id, entity.Name, entity.Status);
     }
