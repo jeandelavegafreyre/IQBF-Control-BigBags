@@ -152,4 +152,7 @@ app.MapHub<OperationsHub>("/hubs/operations");
 
 await AdminSeeder.SeedAsync(app.Services, app.Configuration);
 
+if (app.Environment.IsDevelopment())
+    await DevelopmentDataSeeder.SeedAsync(app.Services);
+
 app.Run();
