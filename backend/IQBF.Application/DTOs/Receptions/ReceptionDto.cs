@@ -10,5 +10,7 @@ public sealed record ReceptionDto(
     string? Comment,
     DateTime CreatedAt,
     string? CreatedBy,
+    DateTime? UpdatedAt,
+    string? UpdatedBy,
     IReadOnlyCollection<ReceptionItemDto> Items
 );
