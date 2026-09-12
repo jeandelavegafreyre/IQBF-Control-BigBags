@@ -1,11 +1,13 @@
+export interface CreateReceptionItemRequest {
+  blId: string
+  quantity: number
+}
+
 export interface CreateReceptionRequest {
   shiftId: string
   terminalTruck: string
   comment?: string
-  items: [{
-    blId: string
-    quantity: number
-  }]
+  items: CreateReceptionItemRequest[]
 }
 
 export interface ReceptionItem {
