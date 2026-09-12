@@ -169,7 +169,36 @@ public sealed class OperationalReportService : IOperationalReportService
             })
             .ToList();
 
-        var completedInMonth = lastDispatchByShip
+        var receptionQuantityByShipAll = await _dbContext.ReceptionItems
+            .AsNoTracking()
+            .Select(x => new { ShipId = x.BL!.ShipId, x.Quantity })
+            .ToListAsync(cancellationToken);
+
+        var dispatchQuantityByShipAll = await _dbContext.DispatchItems
+            .AsNoTracking()
+            .Select(x => new { ShipId = x.BL!.ShipId, x.Quantity })
+            .ToListAsync(cancellationToken);
+
+        var receptionQuantityLookup = receptionQuantityByShipAll
+            .GroupBy(x => x.ShipId)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.Quantity));
+
+        var dispatchQuantityLookup = dispatchQuantityByShipAll
+            .GroupBy(x => x.ShipId)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.Quantity));
+
+        // Una nave se considera completada solo si tuvo recepción y todo lo recibido fue despachado.
+        // El mes gerencial se define por la fecha de su último despacho global.
+        var completedShips = lastDispatchByShip
+            .Where(x =>
+            {
+                var received = receptionQuantityLookup.GetValueOrDefault(x.ShipId);
+                var dispatched = dispatchQuantityLookup.GetValueOrDefault(x.ShipId);
+                return received > 0 && received == dispatched;
+            })
+            .ToList();
+
+        var completedInMonth = completedShips
             .Where(x =>
             {
                 var local = PeruTime(x.LastDispatchAt);
@@ -180,28 +209,15 @@ public sealed class OperationalReportService : IOperationalReportService
 
         var targetShipIds = completedInMonth.Select(x => x.ShipId).Distinct().ToList();
 
-        var yearlyTrend = lastDispatchByShip
+        var yearlyTrend = completedShips
             .Where(x => PeruTime(x.LastDispatchAt).Year == year)
             .GroupBy(x => PeruTime(x.LastDispatchAt).Month)
             .ToDictionary(x => x.Key, x => x.Select(y => y.ShipId).Distinct().Count());
 
-        var dispatchQuantityByShipAll = await _dbContext.DispatchItems
-            .AsNoTracking()
-            .Select(x => new
-            {
-                ShipId = x.BL!.ShipId,
-                x.Quantity
-            })
-            .ToListAsync(cancellationToken);
-
-        var dispatchQuantityLookup = dispatchQuantityByShipAll
-            .GroupBy(x => x.ShipId)
-            .ToDictionary(x => x.Key, x => x.Sum(y => y.Quantity));
-
         var trend = Enumerable.Range(1, 12)
             .Select(trendMonth =>
             {
-                var shipIds = lastDispatchByShip
+                var shipIds = completedShips
                     .Where(x =>
                     {
                         var local = PeruTime(x.LastDispatchAt);
@@ -218,9 +234,7 @@ public sealed class OperationalReportService : IOperationalReportService
             .ToList();
 
         if (targetShipIds.Count == 0)
-        {
             return new ManagementReportDto(year, month, 0, 0, 0, 0, [], trend, []);
-        }
 
         var blRows = await _dbContext.BLs
             .AsNoTracking()
@@ -240,9 +254,7 @@ public sealed class OperationalReportService : IOperationalReportService
             .Select(x => new { x.Id, x.CreatedAt, ShipId = x.Shift!.ShipId })
             .ToListAsync(cancellationToken);
 
-        var dispatchRows = dispatchTimeline
-            .Where(x => targetShipIds.Contains(x.ShipId))
-            .ToList();
+        var dispatchRows = dispatchTimeline.Where(x => targetShipIds.Contains(x.ShipId)).ToList();
 
         var receptionItems = await _dbContext.ReceptionItems
             .AsNoTracking()
@@ -275,12 +287,8 @@ public sealed class OperationalReportService : IOperationalReportService
             var dispatchesForShip = dispatchRows.Where(x => x.ShipId == ship.ShipId).ToList();
             var received = receptionItems.Where(x => x.ShipId == ship.ShipId).Sum(x => x.Quantity);
             var dispatched = dispatchItems.Where(x => x.ShipId == ship.ShipId).Sum(x => x.Quantity);
-            var firstReception = receptionsForShip.Count == 0
-                ? (DateTime?)null
-                : receptionsForShip.Min(x => x.CreatedAt);
-            var durationHours = firstReception.HasValue
-                ? Math.Max(0, (ship.LastDispatchAt - firstReception.Value).TotalHours)
-                : 0;
+            var firstReception = receptionsForShip.Count == 0 ? (DateTime?)null : receptionsForShip.Min(x => x.CreatedAt);
+            var durationHours = firstReception.HasValue ? Math.Max(0, (ship.LastDispatchAt - firstReception.Value).TotalHours) : 0;
 
             return new ManagementShipDto(
                 ship.ShipId,
