@@ -39,3 +39,29 @@ export interface ManagementReport {
   monthlyTrend: ManagementMonthlyTrend[]
   products: ManagementProductReport[]
 }
+
+export interface ManagementInProcessShip {
+  shipId: string
+  shipName: string
+  firstReceptionAt: string
+  lastDispatchAt: string | null
+  lastMovementAt: string
+  declaredQuantity: number
+  receivedQuantity: number
+  dispatchedQuantity: number
+  availableQuantity: number
+  dispatchProgress: number
+  calendarDurationHours: number
+  blCount: number
+  receptionTransactions: number
+  dispatchTransactions: number
+  products: string[]
+}
+
+export interface ManagementInProcessReport {
+  shipsInProcess: number
+  totalReceived: number
+  totalDispatched: number
+  totalAvailable: number
+  ships: ManagementInProcessShip[]
+}
