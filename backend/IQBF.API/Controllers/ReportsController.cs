@@ -11,18 +11,16 @@ namespace IQBF.API.Controllers;
 public sealed class ReportsController : ControllerBase
 {
     private readonly IOperationalReportService _reportService;
+    private readonly IManagementStatusService _managementStatusService;
 
-    public ReportsController(IOperationalReportService reportService)
+    public ReportsController(IOperationalReportService reportService, IManagementStatusService managementStatusService)
     {
         _reportService = reportService;
+        _managementStatusService = managementStatusService;
     }
 
     [HttpGet("shifts/{shiftId:guid}/movements")]
-    [ProducesResponseType(typeof(IReadOnlyList<OperationalMovementDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<OperationalMovementDto>>> GetShiftMovements(
-        Guid shiftId,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<OperationalMovementDto>>> GetShiftMovements(Guid shiftId, CancellationToken cancellationToken)
     {
         var result = await _reportService.GetShiftMovementsAsync(shiftId, cancellationToken);
         return Ok(result);
@@ -30,13 +28,17 @@ public sealed class ReportsController : ControllerBase
 
     [HttpGet("management")]
     [Authorize(Roles = "Administrator,Management")]
-    [ProducesResponseType(typeof(ManagementReportDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ManagementReportDto>> GetManagementReport(
-        [FromQuery] int year,
-        [FromQuery] int month,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<ManagementReportDto>> GetManagementReport([FromQuery] int year, [FromQuery] int month, CancellationToken cancellationToken)
     {
         var result = await _reportService.GetManagementReportAsync(year, month, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("management/active-ships")]
+    [Authorize(Roles = "Administrator,Management")]
+    public async Task<ActionResult<ManagementInProcessDto>> GetManagementActiveShips(CancellationToken cancellationToken)
+    {
+        var result = await _managementStatusService.GetInProcessAsync(cancellationToken);
         return Ok(result);
     }
 }
