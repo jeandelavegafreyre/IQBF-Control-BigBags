@@ -8,6 +8,7 @@ import { OperationsPage } from './pages/Operations/OperationsPage'
 import './pages/Operations/OperationsRefinements.css'
 import { HistoryPage } from './pages/History/HistoryPage'
 import { ReportsPage } from './pages/Reports/ReportsPage'
+import { ManagementReportsPage } from './pages/Management/ManagementReportsPage'
 import { AdminPage } from './pages/Admin/AdminPage'
 import { ShiftStartPage } from './pages/Shift/ShiftStartPage'
 import { getActiveShips } from './services/shipService'
@@ -64,9 +65,8 @@ function ShipsPage() {
         </div>
         <div className="operations-header-actions">
           {user?.role === 'Administrator' ? <button type="button" className="secondary-action" onClick={() => navigate('/admin')}>Configuración</button> : null}
-          <button type="button" className="secondary-action" onClick={handleLogout}>
-            Cerrar sesión
-          </button>
+          {user?.role === 'Administrator' ? <button type="button" className="secondary-action" onClick={() => navigate('/management')}>Panel Gerencial</button> : null}
+          <button type="button" className="secondary-action" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </header>
 
@@ -98,25 +98,10 @@ function ShipsPage() {
             {ships.map((ship, index) => {
               const isSelected = selectedShip?.id === ship.id
               return (
-                <button
-                  type="button"
-                  className={`ship-option${isSelected ? ' is-selected' : ''}`}
-                  key={ship.id}
-                  aria-pressed={isSelected}
-                  onClick={() => handleShipSelection(ship)}
-                >
-                  <div className="ship-card-top">
-                    <span className="ship-card-index">{String(index + 1).padStart(2, '0')}</span>
-                    <span className="ship-status"><span className="ship-status-dot" /> Activa</span>
-                  </div>
-                  <div className="ship-card-body">
-                    <span className="ship-card-label">Nave</span>
-                    <strong>{ship.name}</strong>
-                  </div>
-                  <div className="ship-card-footer">
-                    <span>{isSelected ? 'Nave seleccionada' : 'Seleccionar nave'}</span>
-                    <span className="ship-card-arrow" aria-hidden="true">→</span>
-                  </div>
+                <button type="button" className={`ship-option${isSelected ? ' is-selected' : ''}`} key={ship.id} aria-pressed={isSelected} onClick={() => handleShipSelection(ship)}>
+                  <div className="ship-card-top"><span className="ship-card-index">{String(index + 1).padStart(2, '0')}</span><span className="ship-status"><span className="ship-status-dot" /> Activa</span></div>
+                  <div className="ship-card-body"><span className="ship-card-label">Nave</span><strong>{ship.name}</strong></div>
+                  <div className="ship-card-footer"><span>{isSelected ? 'Nave seleccionada' : 'Seleccionar nave'}</span><span className="ship-card-arrow" aria-hidden="true">→</span></div>
                 </button>
               )
             })}
@@ -125,6 +110,17 @@ function ShipsPage() {
       </section>
     </main>
   )
+}
+
+function HomeRoute() {
+  const { user } = useAuth()
+  return <Navigate to={user?.role === 'Management' ? '/management' : '/ships'} replace />
+}
+
+function OperationalGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  if (user?.role === 'Management') return <Navigate to="/management" replace />
+  return <>{children}</>
 }
 
 function ShiftRoute() {
@@ -160,16 +156,17 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/ships" replace /> : <LoginPage />} />
-      <Route path="/ships" element={<ProtectedRoute><ShipsPage /></ProtectedRoute>} />
-      <Route path="/shift" element={<ProtectedRoute><ShiftRoute /></ProtectedRoute>} />
-      <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-      <Route path="/operations" element={<ProtectedRoute><OperationsRoute /></ProtectedRoute>} />
-      <Route path="/history" element={<ProtectedRoute><HistoryRoute /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><ReportsRoute /></ProtectedRoute>} />
-      <Route path="/app" element={<Navigate to="/ships" replace />} />
-      <Route path="/" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
-      <Route path="*" element={<Navigate to={isAuthenticated ? '/ships' : '/login'} replace />} />
+      <Route path="/login" element={isAuthenticated ? <HomeRoute /> : <LoginPage />} />
+      <Route path="/ships" element={<ProtectedRoute><OperationalGate><ShipsPage /></OperationalGate></ProtectedRoute>} />
+      <Route path="/shift" element={<ProtectedRoute><OperationalGate><ShiftRoute /></OperationalGate></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><OperationalGate><AdminPage /></OperationalGate></ProtectedRoute>} />
+      <Route path="/operations" element={<ProtectedRoute><OperationalGate><OperationsRoute /></OperationalGate></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><OperationalGate><HistoryRoute /></OperationalGate></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><OperationalGate><ReportsRoute /></OperationalGate></ProtectedRoute>} />
+      <Route path="/management" element={<ProtectedRoute><ManagementReportsPage /></ProtectedRoute>} />
+      <Route path="/app" element={isAuthenticated ? <HomeRoute /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={isAuthenticated ? <HomeRoute /> : <Navigate to="/login" replace />} />
+      <Route path="*" element={isAuthenticated ? <HomeRoute /> : <Navigate to="/login" replace />} />
     </Routes>
   )
 }
