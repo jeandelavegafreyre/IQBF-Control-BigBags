@@ -23,6 +23,13 @@ public class DispatchesController : ControllerBase
         _hub = hub;
     }
 
+    [HttpGet("shift/{shiftId:guid}")]
+    public async Task<IActionResult> GetByShift(Guid shiftId, CancellationToken cancellationToken)
+    {
+        var result = await _service.GetByShiftAsync(shiftId, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(
         CreateDispatchRequest request,
@@ -35,6 +42,26 @@ public class DispatchesController : ControllerBase
 
         await _hub.Clients.Group(OperationsHub.ShiftGroup(request.ShiftId)).SendAsync(
             "DispatchCreated",
+            result,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id,
+        CreateDispatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _service.UpdateAsync(
+            id,
+            request,
+            User.Identity!.Name!,
+            cancellationToken);
+
+        await _hub.Clients.Group(OperationsHub.ShiftGroup(request.ShiftId)).SendAsync(
+            "DispatchUpdated",
             result,
             cancellationToken);
 
