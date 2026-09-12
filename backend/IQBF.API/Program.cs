@@ -46,7 +46,12 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            policy.AllowAnyHeader()
+            // En desarrollo/Codespaces el frontend se sirve desde otro origen
+            // (por ejemplo, el puerto 5173). Si no se configuraron orígenes
+            // explícitos, permitimos cualquier origen para facilitar el entorno
+            // local. En producción se deben definir Cors:AllowedOrigins.
+            policy.AllowAnyOrigin()
+                .AllowAnyHeader()
                 .AllowAnyMethod();
         }
     });
