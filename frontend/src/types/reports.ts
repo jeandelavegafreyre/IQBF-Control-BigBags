@@ -19,6 +19,8 @@ export interface OperationalMovement {
   transactionNumber: number
   createdAt: string
   createdBy: string | null
+  updatedAt: string | null
+  updatedBy: string | null
   reference: string
   comment: string | null
   items: OperationalMovementItem[]
