@@ -23,9 +23,7 @@ public sealed class OperationalReportService : IOperationalReportService
             .AnyAsync(x => x.Id == shiftId, cancellationToken);
 
         if (!shiftExists)
-        {
             throw new KeyNotFoundException("No se encontró el turno solicitado.");
-        }
 
         var receptions = await _dbContext.Receptions
             .AsNoTracking()
@@ -45,19 +43,19 @@ public sealed class OperationalReportService : IOperationalReportService
             .Include(x => x.Photos)
             .ToListAsync(cancellationToken);
 
-        var creatorUids = receptions
-            .Select(x => x.CreatedBy)
-            .Concat(dispatches.Select(x => x.CreatedBy))
+        var operatorUids = receptions
+            .SelectMany(x => new[] { x.CreatedBy, x.UpdatedBy })
+            .Concat(dispatches.SelectMany(x => new[] { x.CreatedBy, x.UpdatedBy }))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x!.Trim().ToUpperInvariant())
             .Distinct()
             .ToList();
 
-        var operatorNames = creatorUids.Count == 0
+        var operatorNames = operatorUids.Count == 0
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : (await _dbContext.Users
                 .AsNoTracking()
-                .Where(x => creatorUids.Contains(x.UID))
+                .Where(x => operatorUids.Contains(x.UID))
                 .Select(x => new { x.UID, x.FirstName, x.LastName })
                 .ToListAsync(cancellationToken))
                 .ToDictionary(
@@ -81,6 +79,8 @@ public sealed class OperationalReportService : IOperationalReportService
             reception.TransactionNumber,
             reception.CreatedAt,
             ResolveOperatorName(reception.CreatedBy),
+            reception.UpdatedAt,
+            ResolveOperatorName(reception.UpdatedBy),
             reception.TerminalTruck,
             reception.Comment,
             reception.Items
@@ -107,6 +107,8 @@ public sealed class OperationalReportService : IOperationalReportService
             dispatch.TransactionNumber,
             dispatch.CreatedAt,
             ResolveOperatorName(dispatch.CreatedBy),
+            dispatch.UpdatedAt,
+            ResolveOperatorName(dispatch.UpdatedBy),
             dispatch.Plate,
             dispatch.Comment,
             dispatch.Items
