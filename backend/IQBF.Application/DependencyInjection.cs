@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IOperationalReportService, OperationalReportService>();
+        services.AddScoped<IManagementStatusService, ManagementStatusService>();
 
         // Evidencia fotográfica
         services.AddScoped<IPhotoEvidenceService, PhotoEvidenceService>();
