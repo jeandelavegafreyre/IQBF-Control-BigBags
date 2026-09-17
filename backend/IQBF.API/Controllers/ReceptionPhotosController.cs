@@ -37,6 +37,7 @@ public class ReceptionPhotosController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,Yard,User")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(
         typeof(PhotoDto),

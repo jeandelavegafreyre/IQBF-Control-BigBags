@@ -6,6 +6,7 @@ function normalizeRole(value: unknown): string {
     if (value === 1) return 'Administrator'
     if (value === 2) return 'Yard'
     if (value === 3) return 'User'
+    if (value === 4) return 'Management'
     return 'Unknown'
   }
 
@@ -13,6 +14,7 @@ function normalizeRole(value: unknown): string {
   if (text === '1') return 'Administrator'
   if (text === '2') return 'Yard'
   if (text === '3') return 'User'
+  if (text === '4') return 'Management'
   return text || 'Unknown'
 }
 
